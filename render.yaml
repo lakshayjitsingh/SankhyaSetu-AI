@@ -1,0 +1,13 @@
+﻿services:
+  - type: web
+    name: sankhyasetu-ai
+    env: python
+    region: oregon
+    plan: free
+    buildCommand:  pip install -r backend/requirements.txt
+    startCommand: gunicorn --chdir backend app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GEMINI_API_KEY
+        sync: false

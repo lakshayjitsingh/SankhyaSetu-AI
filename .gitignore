@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Python Environment & Cache
+__pycache__/
+backend/__pycache__/
+*.py[cod]
+*.class
+.env
+backend/.env
+venv/
+.venv/
+env/
+
+# Large local reference files
+sample_winning_presentation.pdf
+*.log
+
+# Internal Dossiers & Chat History
+Antigravity_Chat_History.*
+SankhyaSetu_AI_Executive_Project_Brief.pdf
+*.pptx
+*.pdf
+
+# OS metadata
+.DS_Store
+Thumbs.db
