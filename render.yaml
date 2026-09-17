@@ -1,11 +1,11 @@
-﻿services:
+services:
   - type: web
     name: sankhyasetu-ai
     env: python
     region: oregon
     plan: free
     buildCommand:  pip install -r backend/requirements.txt
-    startCommand: gunicorn --chdir backend app:app
+    startCommand: gunicorn --chdir backend app:app --workers 2 --threads 4 --timeout 60
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

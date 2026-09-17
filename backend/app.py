@@ -14,7 +14,7 @@ ACTIVE_QUIZ_SESSIONS = {}
 FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 
 app = Flask(__name__, static_folder=FRONTEND_DIST if os.path.exists(FRONTEND_DIST) else None)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"], "allow_headers": "*"}})
 
 if os.path.exists(FRONTEND_DIST):
     @app.route("/", defaults={"path": ""})
@@ -26,12 +26,19 @@ if os.path.exists(FRONTEND_DIST):
             return send_from_directory(FRONTEND_DIST, path)
         return send_from_directory(FRONTEND_DIST, "index.html")
 
+# Pre-warm AI diagnostic caches on startup for instant <50ms responses
+try:
+    ai_engine.prewarm_all_diagnostic_caches()
+except Exception as e:
+    print("Error during startup cache pre-warming:", e)
+
 @app.route("/api/health", methods=["GET"])
 def health_check():
     return jsonify({
         "status": "healthy",
         "service": "SankhyaSetu AI - MoSPI Capacity Building Engine",
         "version": "1.0.0",
+        "cache_warm": len(getattr(ai_engine, "_DIAGNOSTIC_WARM_CACHE", {})) > 0,
         "igot_integration": "Enabled (FRAC Compliant / SCORM 2004)"
     })
 

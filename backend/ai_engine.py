@@ -1,7 +1,16 @@
 import os
 import random
 import json
+import threading
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# Persistent connection pool for ultra-fast HTTPS requests to Gemini
+_HTTP_SESSION = requests.Session()
+_adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20, max_retries=Retry(total=2, backoff_factor=0.3))
+_HTTP_SESSION.mount("https://", _adapter)
+_HTTP_SESSION.mount("http://", _adapter)
 
 def get_gemini_api_key():
     key = os.environ.get("GEMINI_API_KEY", "")
@@ -250,21 +259,7 @@ DIAGNOSTIC_SCENARIOS = {
     }
 }
 
-def generate_dynamic_diagnostic(role_id):
-    """
-    Generates 10 dynamic diagnostic assessment questions (2 per each of the 5 FRAC competencies)
-    using live Google Gemini Flash with procedural fallback.
-    """
-    api_key = get_gemini_api_key()
-    if api_key and len(api_key.strip()) > 10:
-        try:
-            gemini_res = call_gemini_diagnostic_generator(role_id)
-            if gemini_res and len(gemini_res[0]) == 10:
-                return gemini_res
-        except Exception as e:
-            print("Gemini Diagnostic Generation error, falling back to procedural:", e)
-
-    return _generate_procedural_diagnostic(role_id)
+# Diagnostic generation logic defined below with warm caching after helper functions
 
 CADRE_INFO = {
     "field_investigator_nsso": {
@@ -348,19 +343,19 @@ Return ONLY a valid JSON array of 5 objects:
   }}
 ]
 """
-        models = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
+        models = ["gemini-flash-lite-latest", "gemini-flash-latest"]
         for m in models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
-                    "temperature": 0.75 + (batch_idx * 0.1),
-                    "maxOutputTokens": 2000,
+                    "temperature": 0.70 + (batch_idx * 0.1),
+                    "maxOutputTokens": 800,
                     "responseMimeType": "application/json"
                 }
             }
             try:
-                res = _HTTP_SESSION.post(url, json=payload, timeout=8.5)
+                res = _HTTP_SESSION.post(url, json=payload, timeout=5.0)
                 if res.status_code == 200:
                     raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
                     parsed = json.loads(raw)
@@ -373,8 +368,11 @@ Return ONLY a valid JSON array of 5 objects:
     with ThreadPoolExecutor(max_workers=2) as executor:
         f1 = executor.submit(fetch_diag_batch, batch1_comps, 0)
         f2 = executor.submit(fetch_diag_batch, batch2_comps, 1)
-        res1 = f1.result()
-        res2 = f2.result()
+        try:
+            res1 = f1.result(timeout=5.5)
+            res2 = f2.result(timeout=5.5)
+        except Exception:
+            return None
 
     combined = res1 + res2
     if len(combined) >= 10:
@@ -463,6 +461,85 @@ def _generate_procedural_diagnostic(role_id):
             })
 
     return questions, metadata
+
+# =====================================================================
+# IN-MEMORY WARM CACHE & ASYNC PREFETCH FOR SUB-100MS RESPONSES
+# =====================================================================
+_CACHE_LOCK = threading.Lock()
+_DIAGNOSTIC_WARM_CACHE = {}
+_DIAGNOSTIC_PREFETCH_IN_PROGRESS = set()
+
+def _replenish_diagnostic_cache(role_id):
+    """
+    Background worker that pre-generates the next question set for a role
+    so the cache always has ready-to-serve questions.
+    """
+    with _CACHE_LOCK:
+        if role_id in _DIAGNOSTIC_PREFETCH_IN_PROGRESS:
+            return
+        _DIAGNOSTIC_PREFETCH_IN_PROGRESS.add(role_id)
+
+    try:
+        api_key = get_gemini_api_key()
+        res = None
+        if api_key and len(api_key.strip()) > 10:
+            try:
+                res = call_gemini_diagnostic_generator(role_id)
+            except Exception as e:
+                print(f"[Prefetch] Gemini generation error for {role_id}: {e}")
+
+        # Fallback to procedural if Gemini didn't return full 10
+        if not res or len(res[0]) < 10:
+            res = _generate_procedural_diagnostic(role_id)
+
+        with _CACHE_LOCK:
+            _DIAGNOSTIC_WARM_CACHE[role_id] = res
+            print(f"[Prefetch] Warm cache primed for {role_id} ({len(res[0])} questions)")
+    finally:
+        with _CACHE_LOCK:
+            _DIAGNOSTIC_PREFETCH_IN_PROGRESS.discard(role_id)
+
+def prewarm_all_diagnostic_caches():
+    """
+    Pre-populates the cache on server startup for all 3 MoSPI roles.
+    Instant procedural seeding guarantee (<5ms) followed by background AI generation.
+    """
+    for role_id in CADRE_INFO.keys():
+        # Seed immediately with procedural questions so cold clicks are sub-millisecond
+        if role_id not in _DIAGNOSTIC_WARM_CACHE:
+            _DIAGNOSTIC_WARM_CACHE[role_id] = _generate_procedural_diagnostic(role_id)
+        # Background thread generates fresh Gemini LLM questions to upgrade the cache
+        threading.Thread(target=_replenish_diagnostic_cache, args=(role_id,), daemon=True).start()
+
+def generate_dynamic_diagnostic(role_id):
+    """
+    Generates 10 dynamic diagnostic assessment questions:
+    - Returns INSTANTLY (< 50ms) from in-memory warm cache.
+    - Concurrently fires background daemon thread to replenish cache for subsequent requests.
+    """
+    role_key = role_id if role_id in CADRE_INFO else "field_investigator_nsso"
+
+    with _CACHE_LOCK:
+        cached = _DIAGNOSTIC_WARM_CACHE.pop(role_key, None)
+
+    # Immediately trigger background replenishment for the next attempt
+    threading.Thread(target=_replenish_diagnostic_cache, args=(role_key,), daemon=True).start()
+
+    if cached and len(cached[0]) == 10:
+        return cached
+
+    # If cache was momentarily empty, try fast Gemini call or procedural fallback
+    api_key = get_gemini_api_key()
+    if api_key and len(api_key.strip()) > 10:
+        try:
+            gemini_res = call_gemini_diagnostic_generator(role_key)
+            if gemini_res and len(gemini_res[0]) == 10:
+                return gemini_res
+        except Exception as e:
+            print("Gemini Diagnostic error:", e)
+
+    return _generate_procedural_diagnostic(role_key)
+
 # =====================================================================
 # SECTION 2: BLOOM'S TAXONOMY QUIZ GENERATOR (STRICT L1 / L2 / L3)
 # =====================================================================
@@ -910,7 +987,6 @@ def _generate_procedural_pool(manual_id, difficulty, count):
 
     return questions
 
-_HTTP_SESSION = requests.Session()
 _PREFETCH_CACHE = {}
 
 def call_gemini_quiz_generator(manual_id, custom_text, difficulty, count=5, doc_name=""):
@@ -1031,22 +1107,22 @@ Return ONLY valid JSON array (no markdown text):
   }}
 ]
 """
-    tokens = 1400 if chunk_count <= 5 else 2600
-    models_to_try = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
+    tokens = 700 if chunk_count <= 5 else 1400
+    models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest"]
 
     for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
-                "temperature": 0.15 + (chunk_idx * 0.08),
+                "temperature": 0.20 + (chunk_idx * 0.08),
                 "maxOutputTokens": tokens,
                 "responseMimeType": "application/json"
             }
         }
 
         try:
-            res = _HTTP_SESSION.post(url, json=payload, timeout=8.5)
+            res = _HTTP_SESSION.post(url, json=payload, timeout=5.5)
             if res.status_code == 200:
                 data = res.json()
                 raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
