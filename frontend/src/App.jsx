@@ -606,33 +606,40 @@ export default function App() {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 14000);
+    const isForceFresh = typeof forceFresh === 'boolean' ? forceFresh : true;
 
-    fetch(`${API_BASE}/quiz/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        manual_id: selectedManual,
-        custom_text: customText,
-        uploaded_filename: uploadedFileName,
-        difficulty: difficulty,
-        count: quizCount,
-        force_fresh: forceFresh,
-        t: Date.now()
+    try {
+      fetch(`${API_BASE}/quiz/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          manual_id: selectedManual,
+          custom_text: typeof customText === 'string' ? customText : '',
+          uploaded_filename: uploadedFileName || '',
+          difficulty: difficulty,
+          count: quizCount,
+          force_fresh: isForceFresh,
+          t: Date.now()
+        })
       })
-    })
-      .then(res => res.json())
-      .then(data => {
-        setQuizQuestions(data.questions || []);
-        setQuizSessionId(data.session_id || '');
-        setQuizLatency(((Date.now() - startTime) / 1000).toFixed(2));
-        setIsGenerating(false);
-      })
-      .catch(err => {
-        console.error("Quiz generation error:", err);
-        setIsGenerating(false);
-      })
-      .finally(() => clearTimeout(timeoutId));
+        .then(res => res.json())
+        .then(data => {
+          setQuizQuestions(data.questions || []);
+          setQuizSessionId(data.session_id || '');
+          setQuizLatency(((Date.now() - startTime) / 1000).toFixed(2));
+          setIsGenerating(false);
+        })
+        .catch(err => {
+          console.error("Quiz generation error:", err);
+          setIsGenerating(false);
+        })
+        .finally(() => clearTimeout(timeoutId));
+    } catch (err) {
+      console.error("Synchronous error during quiz generate:", err);
+      clearTimeout(timeoutId);
+      setIsGenerating(false);
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -1957,7 +1964,7 @@ export default function App() {
                 </div>
 
                 <button
-                  onClick={handleGenerateQuiz}
+                  onClick={() => handleGenerateQuiz(true)}
                   disabled={isGenerating}
                   className="w-full py-3.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
