@@ -39,9 +39,9 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "SankhyaSetu AI - MoSPI Capacity Building Engine",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "gemini_configured": bool(key and len(key.strip()) > 10),
-        "cache_warm": len(getattr(ai_engine, "_DIAGNOSTIC_WARM_CACHE", {})) > 0,
+        "cache_warm": len(getattr(ai_engine, "_DIAGNOSTIC_WARM_BUFFERS", {})) > 0 or len(getattr(ai_engine, "_DIAGNOSTIC_WARM_CACHE", {})) > 0,
         "igot_integration": "Enabled (FRAC Compliant / SCORM 2004)"
     })
 

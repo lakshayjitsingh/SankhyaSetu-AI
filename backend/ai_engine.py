@@ -490,6 +490,7 @@ def _generate_procedural_diagnostic(role_id):
 _CACHE_LOCK = threading.Lock()
 _DIAGNOSTIC_WARM_BUFFERS = {}  # {role_id: deque(maxlen=3)}
 _DIAGNOSTIC_PREFETCH_IN_PROGRESS = set()
+_AI_SEMAPHORE = threading.BoundedSemaphore(2)  # Max 2 concurrent Gemini calls to prevent 429 quota exhaustion
 
 def _replenish_diagnostic_cache(role_id):
     """
@@ -500,6 +501,13 @@ def _replenish_diagnostic_cache(role_id):
         if role_id in _DIAGNOSTIC_PREFETCH_IN_PROGRESS:
             return
         _DIAGNOSTIC_PREFETCH_IN_PROGRESS.add(role_id)
+
+    # Acquire semaphore non-blocking; skip if already at max concurrency
+    acquired = _AI_SEMAPHORE.acquire(blocking=False)
+    if not acquired:
+        with _CACHE_LOCK:
+            _DIAGNOSTIC_PREFETCH_IN_PROGRESS.discard(role_id)
+        return
 
     try:
         api_key = get_gemini_api_key()
@@ -520,20 +528,20 @@ def _replenish_diagnostic_cache(role_id):
             _DIAGNOSTIC_WARM_BUFFERS[role_id].append(res)
             print(f"[Prefetch] Warm buffer primed for {role_id} (count={len(_DIAGNOSTIC_WARM_BUFFERS[role_id])})")
     finally:
+        _AI_SEMAPHORE.release()
         with _CACHE_LOCK:
             _DIAGNOSTIC_PREFETCH_IN_PROGRESS.discard(role_id)
 
 def prewarm_all_diagnostic_caches():
     """
     Pre-populates the buffer on server startup for all 3 MoSPI roles.
-    Seeds immediately with procedural questions (<1ms) and kicks off background Gemini pre-warming.
+    Seeds immediately with rich procedural questions (<1ms, 0 API calls).
     """
     for role_id in CADRE_INFO.keys():
         if role_id not in _DIAGNOSTIC_WARM_BUFFERS:
             _DIAGNOSTIC_WARM_BUFFERS[role_id] = deque(maxlen=3)
         if len(_DIAGNOSTIC_WARM_BUFFERS[role_id]) == 0:
             _DIAGNOSTIC_WARM_BUFFERS[role_id].append(_generate_procedural_diagnostic(role_id))
-        threading.Thread(target=_replenish_diagnostic_cache, args=(role_id,), daemon=True).start()
 
 def generate_dynamic_diagnostic(role_id, force_fresh=False):
     """
@@ -1203,6 +1211,12 @@ def _replenish_quiz_cache(manual_id, difficulty, count=10, doc_name=""):
             return
         _QUIZ_PREFETCH_IN_PROGRESS.add(cache_key)
 
+    acquired = _AI_SEMAPHORE.acquire(blocking=False)
+    if not acquired:
+        with _QUIZ_CACHE_LOCK:
+            _QUIZ_PREFETCH_IN_PROGRESS.discard(cache_key)
+        return
+
     try:
         api_key = get_gemini_api_key()
         res = None
@@ -1221,13 +1235,14 @@ def _replenish_quiz_cache(manual_id, difficulty, count=10, doc_name=""):
             _QUIZ_WARM_BUFFERS[cache_key].append(res)
             print(f"[Prefetch] Quiz warm buffer primed for {cache_key} (count={len(_QUIZ_WARM_BUFFERS[cache_key])})")
     finally:
+        _AI_SEMAPHORE.release()
         with _QUIZ_CACHE_LOCK:
             _QUIZ_PREFETCH_IN_PROGRESS.discard(cache_key)
 
 def prewarm_all_quiz_caches():
     """
     Pre-populates quiz buffer on server startup for standard MoSPI manuals.
-    Seeds immediately with procedural questions (<1ms) and triggers background Gemini pre-warming.
+    Seeds immediately with procedural questions (<1ms, 0 API calls).
     """
     manuals = ["manual_plfs_2026", "manual_cpi_rural", "manual_asuse_2026"]
     difficulties = ["scenario", "recall", "analytical"]
@@ -1238,7 +1253,6 @@ def prewarm_all_quiz_caches():
                 _QUIZ_WARM_BUFFERS[cache_key] = deque(maxlen=3)
             if len(_QUIZ_WARM_BUFFERS[cache_key]) == 0:
                 _QUIZ_WARM_BUFFERS[cache_key].append(_generate_procedural_pool(m, d, 10))
-            threading.Thread(target=_replenish_quiz_cache, args=(m, d, 10), daemon=True).start()
 
 def call_gemini_quiz_generator(manual_id, custom_text, difficulty, count=5, doc_name=""):
     api_key = get_gemini_api_key()
