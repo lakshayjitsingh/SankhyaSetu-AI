@@ -528,14 +528,15 @@ export default function App() {
   };
 
   // Option 1: Diagnostic Logic
-  const startDiagnostic = (fieldId) => {
+  const startDiagnostic = (fieldId, forceFresh = false) => {
     const roleToUse = fieldId || selectedField;
     setSelectedField(roleToUse);
     setDiagnosticResult(null);
     setDiagnosticAnswers({});
     setIsGeneratingDiagnostic(true);
     setActiveTab('diagnostic');
-    fetch(`${API_BASE}/roles/${roleToUse}/diagnostic`)
+    const freshQuery = forceFresh ? `?fresh=true&t=${Date.now()}` : `?t=${Date.now()}`;
+    fetch(`${API_BASE}/roles/${roleToUse}/diagnostic${freshQuery}`)
       .then(res => res.json())
       .then(data => {
         setDiagnosticQuestions(data.questions || []);
@@ -588,7 +589,7 @@ export default function App() {
   };
 
   // Option 2: AI Quiz Logic
-  const handleGenerateQuiz = () => {
+  const handleGenerateQuiz = (forceFresh = true) => {
     setIsGenerating(true);
     setQuizEvaluation(null);
     setQuizAnswers({});
@@ -600,7 +601,9 @@ export default function App() {
         custom_text: customText,
         uploaded_filename: uploadedFileName,
         difficulty: difficulty,
-        count: quizCount
+        count: quizCount,
+        force_fresh: forceFresh,
+        t: Date.now()
       })
     })
       .then(res => res.json())
@@ -1411,12 +1414,13 @@ export default function App() {
                     </div>
 
                     <button
-                      onClick={() => startDiagnostic(selectedField)}
-                      className="px-3.5 py-2 rounded-xl bg-[#faf5ec] hover:bg-[#ebdcc8]/50 border border-[#ebdcc8] text-xs font-bold text-[#ea8b21] flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer shadow-2xs shrink-0"
+                      onClick={() => startDiagnostic(selectedField, true)}
+                      disabled={isGeneratingDiagnostic}
+                      className="px-3.5 py-2 rounded-xl bg-[#faf5ec] hover:bg-[#ebdcc8]/50 border border-[#ebdcc8] text-xs font-bold text-[#ea8b21] flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer shadow-2xs shrink-0 disabled:opacity-50"
                       title="Generate brand new random questions"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Regenerate Scenarios</span>
+                      <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingDiagnostic ? 'animate-spin' : ''}`} />
+                      <span>{isGeneratingDiagnostic ? "Synthesizing New Questions..." : "Regenerate Scenarios"}</span>
                     </button>
                   </div>
 
@@ -1972,9 +1976,20 @@ export default function App() {
                         {quizQuestions.length} Questions Generated from {uploadedFileName ? uploadedFileName : selectedManual.replace('manual_', '').toUpperCase()}
                       </h3>
                     </div>
-                    <span className="text-[10px] font-bold px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full flex items-center gap-1.5 self-start sm:self-auto shadow-2xs">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Powered by Google Gemini Flash (Live LLM)
-                    </span>
+                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                      <button
+                        onClick={() => handleGenerateQuiz(true)}
+                        disabled={isGenerating}
+                        className="px-3 py-1.5 rounded-xl bg-[#faf5ec] hover:bg-[#ebdcc8]/50 border border-[#ebdcc8] text-xs font-bold text-[#ea8b21] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs shrink-0 disabled:opacity-50"
+                        title="Synthesize brand new questions"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+                        <span>{isGenerating ? "Synthesizing..." : "Regenerate Questions"}</span>
+                      </button>
+                      <span className="text-[10px] font-bold px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Powered by Google Gemini Flash (Live LLM)
+                      </span>
+                    </div>
                   </div>
 
                   {/* Top Score Summary Banner if Evaluated */}

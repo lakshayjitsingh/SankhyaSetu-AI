@@ -28,6 +28,14 @@ def get_gemini_api_key():
 
 GEMINI_API_KEY = get_gemini_api_key()
 
+# Verified healthy Google Gemini models with full active quota
+GEMINI_ACTIVE_MODELS = [
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.6-flash"
+]
+
 NAMES = ["Ramesh Kumar", "Priya Sharma", "Sunita Devi", "Anil Verma", "Kavita Rao", "Deepak Patel", "Mohammad Aslam", "Suresh Nair"]
 DISTRICTS = ["Varanasi (UP)", "Rohtak (Haryana)", "Coimbatore (TN)", "Patna (Bihar)", "Khurja (UP)", "Kochi (Kerala)", "Nagpur (Maharashtra)", "Bhubaneswar (Odisha)"]
 COMMODITIES = ["Mustard Oil", "Sona Masoori Rice", "Arhar Dal (Tur)", "Wheat Flour (Atta)", "Desi Ghee", "Sugar (M-30)"]
@@ -299,8 +307,8 @@ CADRE_INFO = {
 
 def call_gemini_diagnostic_generator(role_id):
     """
-    Calls Google Gemini Flash to generate 10 questions using 2 parallel batches (5 questions each).
-    Completes in ~3-4 seconds with zero question repetition.
+    Calls Google Gemini Flash to generate 10 distinct questions in a single ultra-fast call (~3-4s).
+    Covers all 5 competencies (2 questions each) with dynamic seeding.
     """
     api_key = get_gemini_api_key()
     if not api_key:
@@ -308,21 +316,14 @@ def call_gemini_diagnostic_generator(role_id):
 
     cadre = CADRE_INFO.get(role_id, CADRE_INFO["field_investigator_nsso"])
     comps = cadre["competencies"] # list of (cid, desc)
+    comp_lines = "\n".join([f"- '{cid}': {desc}" for cid, desc in comps])
+    seed_val = random.randint(10000, 99999)
 
-    # Batch 1: first 3 competencies (covers comp 0, 1, 2)
-    batch1_comps = [comps[0], comps[1], comps[2]]
-    # Batch 2: next 2 competencies + 1 from first (covers comp 2, 3, 4)
-    batch2_comps = [comps[2], comps[3], comps[4]]
-
-    from concurrent.futures import ThreadPoolExecutor
-
-    def fetch_diag_batch(batch_comps, batch_idx):
-        comp_lines = "\n".join([f"- '{cid}': {desc}" for cid, desc in batch_comps])
-        prompt = f"""You are the official MoSPI Capacity Building AI Engine for Mission Karmayogi (SIH 2026).
+    prompt = f"""You are the official MoSPI Capacity Building AI Engine for Mission Karmayogi (SIH 2026).
 Cadre Under Assessment: {cadre['title']} ({cadre['division']})
-Batch: #{batch_idx+1}
+Seed: {seed_val}
 
-Generate exactly 5 distinct, high-quality multiple-choice field assessment questions for an Indian statistical officer.
+Generate exactly 10 distinct, practical multiple-choice field assessment questions for an Indian statistical officer (2 questions per competency).
 Cover these competencies:
 {comp_lines}
 
@@ -332,7 +333,7 @@ Requirements:
 3. Set 'correct_answer' to index (0, 1, 2, or 3).
 4. Include a 1-sentence 'explanation' citing official MoSPI methodology.
 
-Return ONLY a valid JSON array of 5 objects:
+Return ONLY a valid JSON array of 10 objects:
 [
   {{
     "competency_id": "competency_id_here",
@@ -343,59 +344,51 @@ Return ONLY a valid JSON array of 5 objects:
   }}
 ]
 """
-        models = ["gemini-flash-lite-latest", "gemini-flash-latest"]
-        for m in models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.70 + (batch_idx * 0.1),
-                    "maxOutputTokens": 800,
-                    "responseMimeType": "application/json"
-                }
+    for m in GEMINI_ACTIVE_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.80,
+                "maxOutputTokens": 3200,
+                "responseMimeType": "application/json"
             }
-            try:
-                res = _HTTP_SESSION.post(url, json=payload, timeout=5.0)
-                if res.status_code == 200:
-                    raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = json.loads(raw)
-                    if isinstance(parsed, list) and len(parsed) >= 1:
-                        return parsed
-            except Exception:
-                pass
-        return []
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        f1 = executor.submit(fetch_diag_batch, batch1_comps, 0)
-        f2 = executor.submit(fetch_diag_batch, batch2_comps, 1)
+        }
         try:
-            res1 = f1.result(timeout=5.5)
-            res2 = f2.result(timeout=5.5)
-        except Exception:
-            return None
-
-    combined = res1 + res2
-    if len(combined) >= 10:
-        combined = combined[:10]
-        questions = []
-        metadata = []
-        for idx, q in enumerate(combined):
-            cid = q.get("competency_id", "sampling_methods")
-            qid = f"diag_gemini_{role_id}_{cid}_{idx+1}_{random.randint(1000, 9999)}"
-            questions.append({
-                "id": qid,
-                "competency_id": cid,
-                "question": q["question"],
-                "options": q["options"]
-            })
-            metadata.append({
-                "id": qid,
-                "competency_id": cid,
-                "correct_answer": q["correct_answer"],
-                "explanation": q.get("explanation", "Verified against MoSPI standard methodology."),
-                "source": "Official MoSPI Cadre Competency Manual"
-            })
-        return questions, metadata
+            res = _HTTP_SESSION.post(url, json=payload, timeout=14.0)
+            if res.status_code == 200:
+                raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(raw)
+                if isinstance(parsed, list) and len(parsed) >= 5:
+                    combined = parsed[:10]
+                    questions = []
+                    metadata = []
+                    for idx, q in enumerate(combined):
+                        cid = q.get("competency_id", "sampling_methods")
+                        qid = f"diag_gemini_{role_id}_{cid}_{idx+1}_{random.randint(1000, 9999)}"
+                        questions.append({
+                            "id": qid,
+                            "competency_id": cid,
+                            "question": q["question"],
+                            "options": q["options"]
+                        })
+                        metadata.append({
+                            "id": qid,
+                            "competency_id": cid,
+                            "correct_answer": q["correct_answer"],
+                            "explanation": q.get("explanation", "Verified against MoSPI standard methodology."),
+                            "source": "Official MoSPI Cadre Competency Manual"
+                        })
+                    if len(questions) < 10:
+                        extra_q, extra_m = _generate_procedural_diagnostic(role_id)
+                        need = 10 - len(questions)
+                        questions.extend(extra_q[:need])
+                        metadata.extend(extra_m[:need])
+                    return questions, metadata
+            else:
+                print(f"Gemini {m} returned {res.status_code}")
+        except Exception as e:
+            print(f"Gemini {m} error: {e}")
 
     return None
 def _generate_procedural_diagnostic(role_id):
@@ -502,25 +495,35 @@ def _replenish_diagnostic_cache(role_id):
 def prewarm_all_diagnostic_caches():
     """
     Pre-populates the cache on server startup for all 3 MoSPI roles.
-    Instant procedural seeding guarantee (<5ms) followed by background AI generation.
+    Instant procedural seeding guarantee (<5ms) without quota exhaustion.
     """
     for role_id in CADRE_INFO.keys():
-        # Seed immediately with procedural questions so cold clicks are sub-millisecond
         if role_id not in _DIAGNOSTIC_WARM_CACHE:
             _DIAGNOSTIC_WARM_CACHE[role_id] = _generate_procedural_diagnostic(role_id)
-        # Background thread generates fresh Gemini LLM questions to upgrade the cache
-        threading.Thread(target=_replenish_diagnostic_cache, args=(role_id,), daemon=True).start()
 
-def generate_dynamic_diagnostic(role_id):
+def generate_dynamic_diagnostic(role_id, force_fresh=False):
     """
     Generates 10 dynamic diagnostic assessment questions:
-    - Returns INSTANTLY (< 50ms) from in-memory warm cache.
-    - Concurrently fires background daemon thread to replenish cache for subsequent requests.
+    - If force_fresh is True: directly generates fresh AI questions from Gemini.
+    - If force_fresh is False: returns INSTANTLY from in-memory warm cache,
+      pops the cache so the question set is never repeated, and replenishes in background.
     """
     role_key = role_id if role_id in CADRE_INFO else "field_investigator_nsso"
 
+    if force_fresh:
+        api_key = get_gemini_api_key()
+        if api_key and len(api_key.strip()) > 10:
+            try:
+                gemini_res = call_gemini_diagnostic_generator(role_key)
+                if gemini_res and len(gemini_res[0]) >= 5:
+                    threading.Thread(target=_replenish_diagnostic_cache, args=(role_key,), daemon=True).start()
+                    return gemini_res
+            except Exception as e:
+                print("Gemini Diagnostic error during forced fresh:", e)
+        return _generate_procedural_diagnostic(role_key)
+
     with _CACHE_LOCK:
-        cached = _DIAGNOSTIC_WARM_CACHE.get(role_key)
+        cached = _DIAGNOSTIC_WARM_CACHE.pop(role_key, None)
 
     # Immediately trigger background replenishment for the next attempt
     threading.Thread(target=_replenish_diagnostic_cache, args=(role_key,), daemon=True).start()
@@ -533,7 +536,7 @@ def generate_dynamic_diagnostic(role_id):
     if api_key and len(api_key.strip()) > 10:
         try:
             gemini_res = call_gemini_diagnostic_generator(role_key)
-            if gemini_res and len(gemini_res[0]) == 10:
+            if gemini_res and len(gemini_res[0]) >= 5:
                 return gemini_res
         except Exception as e:
             print("Gemini Diagnostic error:", e)
@@ -1079,22 +1082,22 @@ Return ONLY valid JSON array (no markdown text):
   }}
 ]
 """
-    tokens = 700 if chunk_count <= 5 else 1400
-    models_to_try = ["gemini-flash-lite-latest", "gemini-flash-latest"]
+    tokens = 2048 if chunk_count <= 5 else 3500
+    models_to_try = GEMINI_ACTIVE_MODELS
 
     for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"parts": [{"text": prompt + f"\nSeed: {random.randint(10000, 99999)}"}]}],
             "generationConfig": {
-                "temperature": 0.20 + (chunk_idx * 0.08),
+                "temperature": 0.40 + (chunk_idx * 0.08),
                 "maxOutputTokens": tokens,
                 "responseMimeType": "application/json"
             }
         }
 
         try:
-            res = _HTTP_SESSION.post(url, json=payload, timeout=5.5)
+            res = _HTTP_SESSION.post(url, json=payload, timeout=14.0)
             if res.status_code == 200:
                 data = res.json()
                 raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -1105,8 +1108,10 @@ Return ONLY valid JSON array (no markdown text):
                         q["is_live_gemini"] = True
                         q["source_manual"] = doc_name
                     return parsed
-        except Exception:
-            pass
+            else:
+                print(f"Gemini {model_name} returned {res.status_code}")
+        except Exception as e:
+            print(f"Gemini {model_name} error: {e}")
 
     return []
 
@@ -1146,7 +1151,7 @@ def _replenish_quiz_cache(manual_id, difficulty, count=10, doc_name=""):
 def prewarm_all_quiz_caches():
     """
     Pre-populates quiz cache on server startup for standard MoSPI manuals.
-    Seeds immediately with procedural questions (<2ms) and upgrades in background with Gemini LLM.
+    Seeds immediately with procedural questions (<2ms) without quota exhaustion.
     """
     manuals = ["manual_plfs_2026", "manual_cpi_rural", "manual_asuse_2026"]
     difficulties = ["scenario", "recall", "analytical"]
@@ -1155,13 +1160,13 @@ def prewarm_all_quiz_caches():
             cache_key = (m, d)
             if cache_key not in _QUIZ_WARM_CACHE:
                 _QUIZ_WARM_CACHE[cache_key] = _generate_procedural_pool(m, d, 10)
-            threading.Thread(target=_replenish_quiz_cache, args=(m, d, 10), daemon=True).start()
 
-def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficulty="scenario", count=5, doc_name=""):
+def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficulty="scenario", count=5, doc_name="", force_fresh=False):
     """
     Generates dynamic randomized questions strictly following Bloom's Taxonomy:
-    - Standard MoSPI Manuals: returns INSTANTLY (< 50ms) from in-memory warm cache.
-    - Custom Uploaded Manual: calls Gemini Flash with bounded tokens and fallback.
+    - Custom Uploaded Manual or force_fresh: calls live Gemini Flash directly.
+    - Standard MoSPI Manuals: returns from in-memory warm cache, pops cache to ensure uniqueness,
+      and asynchronously replenishes for subsequent requests.
     """
     try:
         count = int(count)
@@ -1172,24 +1177,39 @@ def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficul
     if diff_clean not in ["recall", "scenario", "analytical"]:
         diff_clean = "scenario"
 
-    # Standard manuals (no custom PDF text uploaded): serve from warm cache!
-    if not custom_text or len(custom_text.strip()) < 20:
-        cache_key = (manual_id, diff_clean)
-        with _QUIZ_CACHE_LOCK:
-            cached_pool = _QUIZ_WARM_CACHE.get(cache_key)
+    # Custom uploaded text or forced fresh generation: call live Gemini Flash directly
+    if (custom_text and len(custom_text.strip()) > 20) or force_fresh:
+        api_key = get_gemini_api_key()
+        if api_key and len(api_key.strip()) > 10:
+            try:
+                llm_questions = call_gemini_quiz_generator(manual_id, custom_text, diff_clean, count=count, doc_name=doc_name)
+                if llm_questions and len(llm_questions) >= count:
+                    return llm_questions[:count]
+                elif llm_questions and len(llm_questions) > 0:
+                    need_more = count - len(llm_questions)
+                    extra = _generate_procedural_pool(manual_id, diff_clean, need_more)
+                    return llm_questions + extra
+            except Exception as e:
+                print("Gemini API error, falling back to procedural engine:", e)
+        return _generate_procedural_pool(manual_id, diff_clean, count)
 
-        # Trigger non-blocking replenishment in background for continuous freshness
-        threading.Thread(target=_replenish_quiz_cache, args=(manual_id, diff_clean, max(count, 10), doc_name), daemon=True).start()
+    # Standard manuals (no custom text uploaded): serve from warm cache and rotate
+    cache_key = (manual_id, diff_clean)
+    with _QUIZ_CACHE_LOCK:
+        cached_pool = _QUIZ_WARM_CACHE.pop(cache_key, None)
 
-        if cached_pool and len(cached_pool) >= count:
-            shuffled = list(cached_pool)
-            random.shuffle(shuffled)
-            return shuffled[:count]
-        elif cached_pool and len(cached_pool) > 0:
-            extra = _generate_procedural_pool(manual_id, diff_clean, count - len(cached_pool))
-            return list(cached_pool) + extra
+    # Trigger background replenishment for the next quiz request
+    threading.Thread(target=_replenish_quiz_cache, args=(manual_id, diff_clean, max(count, 10), doc_name), daemon=True).start()
 
-    # Custom uploaded text: call live Gemini Flash with fallback
+    if cached_pool and len(cached_pool) >= count:
+        shuffled = list(cached_pool)
+        random.shuffle(shuffled)
+        return shuffled[:count]
+    elif cached_pool and len(cached_pool) > 0:
+        extra = _generate_procedural_pool(manual_id, diff_clean, count - len(cached_pool))
+        return list(cached_pool) + extra
+
+    # If cache was momentarily empty, try live Gemini Flash
     api_key = get_gemini_api_key()
     if api_key and len(api_key.strip()) > 10:
         try:
@@ -1201,6 +1221,6 @@ def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficul
                 extra = _generate_procedural_pool(manual_id, diff_clean, need_more)
                 return llm_questions + extra
         except Exception as e:
-            print("Gemini API error, falling back to procedural engine:", e)
+            print("Gemini API error:", e)
 
     return _generate_procedural_pool(manual_id, diff_clean, count)

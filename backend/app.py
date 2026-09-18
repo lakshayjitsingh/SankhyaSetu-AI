@@ -50,7 +50,8 @@ def get_roles():
 @app.route("/api/roles/<role_id>/diagnostic", methods=["GET"])
 def get_diagnostic(role_id):
     session_id = f"diag_{uuid.uuid4().hex[:8]}"
-    questions, metadata = ai_engine.generate_dynamic_diagnostic(role_id)
+    force_fresh = request.args.get("fresh") == "true" or request.args.get("regenerate") == "true"
+    questions, metadata = ai_engine.generate_dynamic_diagnostic(role_id, force_fresh=force_fresh)
     ACTIVE_DIAGNOSTIC_SESSIONS[session_id] = metadata
     return jsonify({
         "role_id": role_id,
@@ -189,6 +190,7 @@ def generate_quiz():
     custom_text = data.get("custom_text", "")
     uploaded_filename = data.get("uploaded_filename", "")
     difficulty = data.get("difficulty", "scenario")
+    force_fresh = data.get("force_fresh", True) or data.get("regenerate", False)
     try:
         count = int(data.get("count", 5))
     except Exception:
@@ -201,7 +203,9 @@ def generate_quiz():
         source_title = manual["title"]
 
     # Generate dynamic randomized questions using AI Engine
-    generated_questions = ai_engine.generate_dynamic_quiz(manual_id, custom_text, difficulty, count=count, doc_name=source_title)
+    generated_questions = ai_engine.generate_dynamic_quiz(
+        manual_id, custom_text, difficulty, count=count, doc_name=source_title, force_fresh=force_fresh
+    )
 
     quiz_session_id = f"quiz_{uuid.uuid4().hex[:8]}"
     ACTIVE_QUIZ_SESSIONS[quiz_session_id] = generated_questions
