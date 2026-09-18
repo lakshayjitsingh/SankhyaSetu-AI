@@ -109,34 +109,63 @@ export default function App() {
 
   const lastActiveRef = useRef(Date.now());
 
-  // Listen to user activity & run session expiration timer
+  // Listen to user activity & run cross-tab session expiration timer
   useEffect(() => {
     if (!user) {
       setShowInactivityWarning(false);
       return;
     }
 
-    lastActiveRef.current = Date.now();
-    localStorage.setItem('sankhya_last_activity', Date.now().toString());
+    const nowInit = Date.now();
+    lastActiveRef.current = nowInit;
+    localStorage.setItem('sankhya_last_activity', nowInit.toString());
 
-    let throttleTimer = null;
+    let lastWrite = nowInit;
     const handleActivity = () => {
       const now = Date.now();
       lastActiveRef.current = now;
-      if (!throttleTimer) {
-        throttleTimer = setTimeout(() => {
-          localStorage.setItem('sankhya_last_activity', Date.now().toString());
-          throttleTimer = null;
-        }, 2000);
+      if (now - lastWrite > 2000) {
+        lastWrite = now;
+        localStorage.setItem('sankhya_last_activity', now.toString());
       }
     };
 
     const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
     events.forEach(ev => window.addEventListener(ev, handleActivity, { passive: true }));
 
+    // Listen for storage updates from other open tabs
+    const handleStorage = (e) => {
+      if (e.key === 'sankhya_last_activity' && e.newValue) {
+        const remoteTime = parseInt(e.newValue, 10);
+        lastActiveRef.current = Math.max(lastActiveRef.current, remoteTime);
+        setShowInactivityWarning(false);
+      } else if (e.key === 'sankhya_user' && !e.newValue) {
+        // User logged out or auto-locked in another tab
+        setUser(null);
+        setShowInactivityWarning(false);
+        setInactivityNotice('Session locked or logged out from another browser window for MoSPI data confidentiality.');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
     const interval = setInterval(() => {
       const now = Date.now();
-      const elapsed = now - lastActiveRef.current;
+      const storedUser = localStorage.getItem('sankhya_user');
+      const storedActivity = localStorage.getItem('sankhya_last_activity');
+
+      // If another tab cleared the session, sync immediately
+      if (!storedUser) {
+        setUser(null);
+        setShowInactivityWarning(false);
+        return;
+      }
+
+      // Check the latest activity across both THIS tab and OTHER tabs
+      const latestActivity = storedActivity 
+        ? Math.max(lastActiveRef.current, parseInt(storedActivity, 10)) 
+        : lastActiveRef.current;
+      lastActiveRef.current = latestActivity;
+      const elapsed = now - latestActivity;
 
       if (elapsed >= INACTIVITY_LIMIT_MS) {
         setShowInactivityWarning(false);
@@ -159,14 +188,15 @@ export default function App() {
 
     return () => {
       events.forEach(ev => window.removeEventListener(ev, handleActivity));
+      window.removeEventListener('storage', handleStorage);
       clearInterval(interval);
-      if (throttleTimer) clearTimeout(throttleTimer);
     };
   }, [user]);
 
   const extendSession = () => {
-    lastActiveRef.current = Date.now();
-    localStorage.setItem('sankhya_last_activity', Date.now().toString());
+    const now = Date.now();
+    lastActiveRef.current = now;
+    localStorage.setItem('sankhya_last_activity', now.toString());
     setShowInactivityWarning(false);
     setSecondsRemaining(30);
   };
