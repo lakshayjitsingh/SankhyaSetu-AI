@@ -692,6 +692,7 @@ export default function App() {
   };
 
   const submitQuiz = () => {
+    if (isSubmittingQuiz || quizEvaluation) return;
     setIsSubmittingQuiz(true);
     fetch(`${API_BASE}/quiz/evaluate`, {
       method: 'POST',
@@ -2098,26 +2099,63 @@ export default function App() {
                         </h4>
 
                         <div className="space-y-2 pt-1">
-                          {q.options.map((opt, oIdx) => (
-                            <label
-                              key={oIdx}
-                              onClick={() => handleQuizAnswer(q.id, oIdx)}
-                              className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-                                quizAnswers[q.id] === oIdx
-                                  ? 'bg-[#ea8b21]/10 border-[#ea8b21] text-slate-950 font-bold shadow-2xs'
-                                  : 'bg-white border-[#ebdcc8] text-slate-700 hover:bg-[#faf5ec]'
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name={`quiz_q_${q.id}`}
-                                checked={quizAnswers[q.id] === oIdx}
-                                onChange={() => handleQuizAnswer(q.id, oIdx)}
-                                className="text-[#ea8b21] focus:ring-[#ea8b21]"
-                              />
-                              <span>{opt}</span>
-                            </label>
-                          ))}
+                          {q.options.map((opt, oIdx) => {
+                            const isEvaluated = !!quizEvaluation;
+                            const resList = quizEvaluation?.results || quizEvaluation?.detailed_results || [];
+                            const res = isEvaluated ? resList.find(r => r.id === q.id || r.question_id === q.id) : null;
+                            const correctIdx = res ? (typeof res.correct_choice !== 'undefined' ? res.correct_choice : (typeof res.correct_answer !== 'undefined' ? res.correct_answer : -1)) : -1;
+                            const isUserChoice = quizAnswers[q.id] === oIdx;
+                            const isCorrectChoice = isEvaluated && oIdx === correctIdx;
+                            const isWrongChoice = isEvaluated && isUserChoice && oIdx !== correctIdx;
+
+                            let optionClasses = 'bg-white border-[#ebdcc8] text-slate-700 hover:bg-[#faf5ec]';
+                            let cursorClass = 'cursor-pointer';
+
+                            if (isEvaluated) {
+                              cursorClass = 'cursor-default';
+                              if (isCorrectChoice) {
+                                optionClasses = 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold shadow-2xs ring-1 ring-emerald-400';
+                              } else if (isWrongChoice) {
+                                optionClasses = 'bg-rose-50 border-rose-400 text-rose-950 font-medium opacity-85';
+                              } else {
+                                optionClasses = 'bg-slate-50 border-slate-200 text-slate-400 opacity-60';
+                              }
+                            } else if (isUserChoice) {
+                              optionClasses = 'bg-[#ea8b21]/10 border-[#ea8b21] text-slate-950 font-bold shadow-2xs';
+                            }
+
+                            return (
+                              <label
+                                key={oIdx}
+                                onClick={() => {
+                                  if (!isEvaluated) handleQuizAnswer(q.id, oIdx);
+                                }}
+                                className={`flex items-center gap-3 p-3 rounded-xl border text-xs transition-all ${cursorClass} ${optionClasses}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`quiz_q_${q.id}`}
+                                  checked={isUserChoice}
+                                  disabled={isEvaluated}
+                                  onChange={() => {
+                                    if (!isEvaluated) handleQuizAnswer(q.id, oIdx);
+                                  }}
+                                  className="text-[#ea8b21] focus:ring-[#ea8b21] disabled:opacity-80"
+                                />
+                                <span className="flex-1">{opt}</span>
+                                {isCorrectChoice && (
+                                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Correct Key
+                                  </span>
+                                )}
+                                {isWrongChoice && (
+                                  <span className="text-[10px] font-bold text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3 text-rose-600" /> Your Selection
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
                         </div>
 
                         {quizEvaluation && (() => {
@@ -2175,18 +2213,52 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <span className="text-xs font-medium text-slate-500">
-                      {Object.keys(quizAnswers).length} of {quizQuestions.length} answered
+                      {quizEvaluation ? (
+                        <span className="font-bold text-emerald-700 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          Evaluation Complete & Citations Verified
+                        </span>
+                      ) : (
+                        `${Object.keys(quizAnswers).length} of ${quizQuestions.length} answered`
+                      )}
                     </span>
-                    <button
-                      onClick={submitQuiz}
-                      disabled={isSubmittingQuiz || Object.keys(quizAnswers).length < quizQuestions.length}
-                      className="px-6 py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      {isSubmittingQuiz ? "Verifying Ground Truth..." : "Submit & Check Citations"}
-                      <CheckCircle2 className="w-4 h-4" />
-                    </button>
+
+                    {quizEvaluation ? (
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            setQuizAnswers({});
+                            setQuizEvaluation(null);
+                          }}
+                          className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Retake Test</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActiveTab('dashboard');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="px-6 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Go to Dashboard</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={submitQuiz}
+                        disabled={isSubmittingQuiz || Object.keys(quizAnswers).length < quizQuestions.length}
+                        className="px-6 py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSubmittingQuiz ? "Verifying Ground Truth..." : "Submit & Check Citations"}
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
