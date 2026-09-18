@@ -958,28 +958,40 @@ export default function App() {
         <div className="p-4 space-y-5">
           
           {/* Karmayogi Bharat & MoSPI Logo Brand */}
-          <div className="flex items-center gap-3 px-2 py-1.5 border-b border-[#ebdcc8]/80 pb-4">
-            <div className="w-10 h-10 rounded-2xl bg-white shadow-xs p-1.5 border border-[#ebdcc8] flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
-                {/* Karmayogi Bharat Lotus Petals & Chakra Motif */}
-                <circle cx="50" cy="50" r="44" stroke="#ea8b21" strokeWidth="2.5" strokeDasharray="4 2" />
-                <path d="M50 16 C40 32 30 45 50 68 C70 45 60 32 50 16 Z" fill="#ea8b21" opacity="0.9" />
-                <path d="M26 36 C38 42 46 54 50 68 C38 64 26 52 26 36 Z" fill="#0284c7" opacity="0.85" />
-                <path d="M74 36 C62 42 54 54 50 68 C62 64 74 52 74 36 Z" fill="#10b981" opacity="0.85" />
-                <circle cx="50" cy="68" r="6" fill="#1e293b" />
-              </svg>
-            </div>
-            <div className="overflow-hidden">
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-lg tracking-tight text-slate-900">
-                  Sankhya<span className="text-[#ea8b21]">Setu</span>
-                </span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 rounded">
-                  MoSPI
-                </span>
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#ebdcc8]/80 pb-4">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-10 h-10 rounded-2xl bg-white shadow-xs p-1.5 border border-[#ebdcc8] flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
+                  {/* Karmayogi Bharat Lotus Petals & Chakra Motif */}
+                  <circle cx="50" cy="50" r="44" stroke="#ea8b21" strokeWidth="2.5" strokeDasharray="4 2" />
+                  <path d="M50 16 C40 32 30 45 50 68 C70 45 60 32 50 16 Z" fill="#ea8b21" opacity="0.9" />
+                  <path d="M26 36 C38 42 46 54 50 68 C38 64 26 52 26 36 Z" fill="#0284c7" opacity="0.85" />
+                  <path d="M74 36 C62 42 54 54 50 68 C62 64 74 52 74 36 Z" fill="#10b981" opacity="0.85" />
+                  <circle cx="50" cy="68" r="6" fill="#1e293b" />
+                </svg>
               </div>
-              <p className="text-xs text-slate-500 font-medium truncate">Karmayogi Bharat Ecosystem</p>
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-lg tracking-tight text-slate-900">
+                    Sankhya<span className="text-[#ea8b21]">Setu</span>
+                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 rounded">
+                    MoSPI
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium truncate">Karmayogi Bharat Ecosystem</p>
+              </div>
             </div>
+
+            {/* Dedicated Mobile Drawer Close (X) Button */}
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-[#eee3d3] rounded-xl transition-all md:hidden cursor-pointer shrink-0"
+              title="Close Menu"
+              aria-label="Close navigation menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Navigation Links (Bigger, Comfortable Text & Icons) */}
@@ -1099,15 +1111,17 @@ export default function App() {
       <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50">
         
         {/* Top Minimal Bar */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => setMobileSidebarOpen(true)}
-              className="p-1.5 hover:bg-slate-100 rounded-lg md:hidden text-slate-600"
+              className="p-1.5 hover:bg-slate-100 rounded-lg md:hidden text-slate-600 cursor-pointer"
+              title="Open Menu"
+              aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
               <span className="font-semibold text-slate-800">MoSPI Platform</span>
               <span>/</span>
               <span className="capitalize font-bold text-[#ea8b21]">
@@ -1121,35 +1135,35 @@ export default function App() {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               Session Security: 2m Auto-Lock
             </span>
-            <span className="text-[11px] font-semibold px-3 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full font-mono">
+            <span className="text-[10px] sm:text-[11px] font-semibold px-2.5 sm:px-3 py-0.5 sm:py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full font-mono shrink-0">
               SIH Problem #SIH26101
             </span>
           </div>
         </header>
 
         {/* Content Container */}
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-8">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-8 py-4 sm:py-8">
 
           {/* ===================================================================
               SECTION 1: HOME - ABOUT SANKHYASETU AI & HOW IT WORKS
               =================================================================== */}
           {activeTab === 'home' && (
-            <div className="space-y-8 animate-in fade-in duration-200">
+            <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
               
               {/* Refined, Light, Airy Hero Card (Clean Karmayogi Bharat Style) */}
-              <div className="bg-white border border-[#ebdcc8] rounded-3xl p-7 sm:p-9 shadow-xs space-y-6 relative overflow-hidden">
+              <div className="bg-white border border-[#ebdcc8] rounded-3xl p-5 sm:p-9 shadow-xs space-y-5 sm:space-y-6 relative overflow-hidden">
                 {/* Subtle warm accent ambient highlight */}
                 <div className="absolute top-0 right-0 w-96 h-96 bg-[#ea8b21]/5 rounded-full blur-3xl pointer-events-none"></div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#ebdcc8]/60">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ea8b21]/10 border border-[#ea8b21]/20 text-[#ea8b21] rounded-full text-xs font-bold">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ea8b21]/10 border border-[#ea8b21]/20 text-[#ea8b21] rounded-full text-xs font-bold self-start">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>MoSPI Official Capacity Building • Karmayogi Bharat Ecosystem</span>
                   </div>
 
                   <button
                     onClick={() => setShowFieldModal(true)}
-                    className="self-start sm:self-auto px-3.5 py-1.5 bg-[#faf5ec] hover:bg-[#eee3d3] text-slate-800 border border-[#ebdcc8] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    className="w-full sm:w-auto px-3.5 py-2 bg-[#faf5ec] hover:bg-[#eee3d3] text-slate-800 border border-[#ebdcc8] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <RefreshCw className="w-3 h-3 text-[#ea8b21]" />
                     <span>Change Working Field</span>
@@ -1178,7 +1192,7 @@ export default function App() {
 
                   <button
                     onClick={() => setActiveTab('dashboard')}
-                    className="px-5 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    className="w-full sm:w-auto px-5 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                   >
                     <TrendingUp className="w-3.5 h-3.5" />
                     <span>View Your Progress Record</span>
@@ -1441,10 +1455,10 @@ export default function App() {
               )}
 
               {!diagnosticResult && !isGeneratingDiagnostic && (
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-sm space-y-5 sm:space-y-6">
                   <div className="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-bold text-[#ea8b21] uppercase tracking-wider">
                           FRAC Competency Assessment
                         </span>
@@ -1468,7 +1482,7 @@ export default function App() {
                     <button
                       onClick={() => startDiagnostic(selectedField, true)}
                       disabled={isGeneratingDiagnostic}
-                      className="px-3.5 py-2 rounded-xl bg-[#faf5ec] hover:bg-[#ebdcc8]/50 border border-[#ebdcc8] text-xs font-bold text-[#ea8b21] flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer shadow-2xs shrink-0 disabled:opacity-50"
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#faf5ec] hover:bg-[#ebdcc8]/50 border border-[#ebdcc8] text-xs font-bold text-[#ea8b21] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs shrink-0 disabled:opacity-50"
                       title="Generate brand new random questions"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingDiagnostic ? 'animate-spin' : ''}`} />
@@ -1476,10 +1490,10 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {diagnosticQuestions.map((q, idx) => (
-                      <div key={q.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                        <div className="flex items-start gap-3">
+                      <div key={q.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                        <div className="flex items-start gap-2.5 sm:gap-3">
                           <span className="w-6 h-6 rounded-lg bg-[#ea8b21] text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                             {idx + 1}
                           </span>
@@ -1488,7 +1502,7 @@ export default function App() {
                           </h3>
                         </div>
 
-                        <div className="space-y-2 pl-9">
+                        <div className="space-y-2 pl-0 sm:pl-9">
                           {q.options.map((opt, oIdx) => (
                             <label
                               key={oIdx}
@@ -1506,7 +1520,7 @@ export default function App() {
                                 onChange={() => handleDiagnosticAnswer(q.id, oIdx)}
                                 className="text-[#ea8b21] focus:ring-[#ea8b21]"
                               />
-                              <span>{opt}</span>
+                              <span className="flex-1">{opt}</span>
                             </label>
                           ))}
                         </div>
@@ -1514,14 +1528,14 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <span className="text-xs font-medium text-slate-500">
                       {Object.keys(diagnosticAnswers).length} of {diagnosticQuestions.length} answered
                     </span>
                     <button
                       onClick={submitDiagnostic}
                       disabled={loadingDiagnostic || Object.keys(diagnosticAnswers).length < diagnosticQuestions.length}
-                      className="px-6 py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                      className="w-full sm:w-auto px-6 py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {loadingDiagnostic ? "Calculating Gaps..." : "Submit & View My Gaps"}
                       <ArrowRight className="w-4 h-4" />
@@ -1532,7 +1546,7 @@ export default function App() {
 
               {diagnosticResult && !isGeneratingDiagnostic && (
                 <div className="space-y-6 animate-in fade-in duration-200">
-                  <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                  <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-sm space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
                       <div>
                         <span className="text-xs font-bold text-[#ea8b21] uppercase tracking-wider">
@@ -1555,7 +1569,7 @@ export default function App() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                       {/* Radar Diagram Container with Generous Breathing Room */}
-                      <div className="lg:col-span-7 bg-[#fcfaf6] border border-[#ebdcc8] rounded-3xl p-5 sm:p-7 shadow-sm space-y-4">
+                      <div className="lg:col-span-7 bg-[#fcfaf6] border border-[#ebdcc8] rounded-3xl p-4 sm:p-7 shadow-sm space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-[#ebdcc8]/80">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
@@ -1573,7 +1587,7 @@ export default function App() {
                           </span>
                         </div>
 
-                        {/* Radar Chart SVG with outerRadius 48% to guarantee 0% clipping */}
+                        {/* Radar Chart SVG with outerRadius 42% on mobile to guarantee zero clipping */}
                         <div className="h-80 sm:h-96 w-full flex items-center justify-center relative">
                           <ResponsiveContainer width="100%" height="100%">
                             <RadarChart 
@@ -1583,7 +1597,7 @@ export default function App() {
                               }))}
                               cx="50%" 
                               cy="50%" 
-                              outerRadius="48%"
+                              outerRadius="42%"
                             >
                               <PolarGrid stroke="#cbd5e1" strokeDasharray="3 3" />
                               <PolarAngleAxis 
@@ -1837,7 +1851,7 @@ export default function App() {
                 </span>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-sm space-y-6">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-[#ea8b21] uppercase tracking-wider">
@@ -2248,13 +2262,13 @@ export default function App() {
                     </span>
 
                     {quizEvaluation ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                         <button
                           onClick={() => {
                             setQuizAnswers({});
                             setQuizEvaluation(null);
                           }}
-                          className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                          className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
                           <span>Retake Test</span>
@@ -2265,7 +2279,7 @@ export default function App() {
                             setActiveTab('dashboard');
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
-                          className="px-6 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center gap-1.5 cursor-pointer"
+                          className="w-full sm:w-auto px-6 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <span>Go to Dashboard</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -2275,7 +2289,7 @@ export default function App() {
                       <button
                         onClick={submitQuiz}
                         disabled={isSubmittingQuiz || Object.keys(quizAnswers).length < quizQuestions.length}
-                        className="px-6 py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        className="w-full sm:w-auto px-6 py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                       >
                         {isSubmittingQuiz ? "Verifying Ground Truth..." : "Submit & Check Citations"}
                         <CheckCircle2 className="w-4 h-4" />
@@ -2344,10 +2358,10 @@ export default function App() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
                     <button
                       onClick={() => startDiagnostic(selectedField)}
-                      className="px-4 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center gap-1.5 transition-all"
+                      className="w-full sm:w-auto px-4 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center justify-center gap-1.5 transition-all"
                     >
                       <Compass className="w-3.5 h-3.5" /> Take Skill Diagnostic
                     </button>
@@ -2356,7 +2370,7 @@ export default function App() {
                         setSelectedManual('manual_cpi_rural');
                         setActiveTab('upload_quiz');
                       }}
-                      className="px-4 py-2.5 bg-white hover:bg-[#faf5ec] border border-[#ebdcc8] text-slate-800 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all shadow-2xs"
+                      className="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-[#faf5ec] border border-[#ebdcc8] text-slate-800 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-2xs"
                     >
                       <Upload className="w-3.5 h-3.5 text-[#ea8b21]" /> Take Manual Quiz
                     </button>
@@ -2458,7 +2472,7 @@ export default function App() {
                           <XAxis 
                             dataKey="name" 
                             tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }} 
-                            interval={0}
+                            interval="preserveStartEnd"
                             dy={8}
                           />
                           <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
@@ -2655,13 +2669,14 @@ export default function App() {
               })}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">You can change this anytime from the Home page.</span>
+            <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <span className="text-xs text-slate-400 text-center sm:text-left">You can change this anytime from the Home page.</span>
               <button
                 onClick={() => confirmFieldSelection(selectedField)}
-                className="px-6 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold shadow-md shadow-[#ea8b21]/20 transition-all cursor-pointer flex items-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold shadow-md shadow-[#ea8b21]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Confirm & Continue to Portal <ArrowRight className="w-3.5 h-3.5" />
+                <span>Confirm & Continue to Portal</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
