@@ -230,6 +230,7 @@ export default function App() {
   const [diagnosticAnswers, setDiagnosticAnswers] = useState({});
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [loadingDiagnostic, setLoadingDiagnostic] = useState(false);
+  const [diagnosticLatency, setDiagnosticLatency] = useState(null);
   const [activeVideoModal, setActiveVideoModal] = useState(null);
   const [videoTimestamp, setVideoTimestamp] = useState(0);
 
@@ -243,6 +244,7 @@ export default function App() {
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizEvaluation, setQuizEvaluation] = useState(null);
+  const [quizLatency, setQuizLatency] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadingManual, setIsUploadingManual] = useState(false);
   const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
@@ -536,17 +538,24 @@ export default function App() {
     setIsGeneratingDiagnostic(true);
     setActiveTab('diagnostic');
     const freshQuery = forceFresh ? `?fresh=true&t=${Date.now()}` : `?t=${Date.now()}`;
-    fetch(`${API_BASE}/roles/${roleToUse}/diagnostic${freshQuery}`)
+    const startTime = Date.now();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 14000);
+
+    fetch(`${API_BASE}/roles/${roleToUse}/diagnostic${freshQuery}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setDiagnosticQuestions(data.questions || []);
         setDiagnosticSessionId(data.session_id || '');
+        setDiagnosticLatency(((Date.now() - startTime) / 1000).toFixed(2));
         setIsGeneratingDiagnostic(false);
       })
       .catch(err => {
-        console.error(err);
+        console.error("Diagnostic fetch error:", err);
         setIsGeneratingDiagnostic(false);
-      });
+      })
+      .finally(() => clearTimeout(timeoutId));
   };
 
   const handleDiagnosticAnswer = (qId, optionIdx) => {
@@ -593,9 +602,15 @@ export default function App() {
     setIsGenerating(true);
     setQuizEvaluation(null);
     setQuizAnswers({});
+    const startTime = Date.now();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 14000);
+
     fetch(`${API_BASE}/quiz/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         manual_id: selectedManual,
         custom_text: customText,
@@ -610,12 +625,14 @@ export default function App() {
       .then(data => {
         setQuizQuestions(data.questions || []);
         setQuizSessionId(data.session_id || '');
+        setQuizLatency(((Date.now() - startTime) / 1000).toFixed(2));
         setIsGenerating(false);
       })
       .catch(err => {
-        console.error(err);
+        console.error("Quiz generation error:", err);
         setIsGenerating(false);
-      });
+      })
+      .finally(() => clearTimeout(timeoutId));
   };
 
   const handleFileUpload = (e) => {
@@ -972,7 +989,7 @@ export default function App() {
             <button
               onClick={() => { 
                 setActiveTab('upload_quiz');
-                if (!quizQuestions.length) handleGenerateQuiz();
+                if (!quizQuestions.length) handleGenerateQuiz(false);
                 setMobileSidebarOpen(false);
               }}
               className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
@@ -1404,6 +1421,11 @@ export default function App() {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-emerald-600" /> 10 Questions • Powered by Gemini Flash
                         </span>
+                        {diagnosticLatency && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                            ⚡ Ready in {diagnosticLatency}s
+                          </span>
+                        )}
                       </div>
                       <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
                         Answer these {diagnosticQuestions.length || 10} questions to diagnose your weaker competencies
@@ -1951,6 +1973,13 @@ export default function App() {
                     </span>
                   )}
                 </button>
+                {quizLatency && (
+                  <div className="text-center pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                      ⚡ Synthesized in {quizLatency}s • Ground-Truth Verified
+                    </span>
+                  </div>
+                )}
               </div>
 
               {quizQuestions.length === 0 && !isGenerating && (
