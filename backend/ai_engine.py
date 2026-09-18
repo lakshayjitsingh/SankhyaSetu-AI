@@ -520,7 +520,7 @@ def generate_dynamic_diagnostic(role_id):
     role_key = role_id if role_id in CADRE_INFO else "field_investigator_nsso"
 
     with _CACHE_LOCK:
-        cached = _DIAGNOSTIC_WARM_CACHE.pop(role_key, None)
+        cached = _DIAGNOSTIC_WARM_CACHE.get(role_key)
 
     # Immediately trigger background replenishment for the next attempt
     threading.Thread(target=_replenish_diagnostic_cache, args=(role_key,), daemon=True).start()
@@ -891,35 +891,7 @@ BLOOM_MANUAL_QUESTIONS = {
     }
 }
 
-def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficulty="scenario", count=5, doc_name=""):
-    """
-    Generates dynamic randomized questions strictly following Bloom's Taxonomy:
-    - Supports selectable counts: 5, 10, 20, 30 questions.
-    - 'recall'     -> Bloom L1: Direct Guideline Recall
-    - 'scenario'   -> Bloom L2: Field Dilemmas & Real Application
-    - 'analytical' -> Bloom L3: Critical Verification & Imputation
-    """
-    try:
-        count = int(count)
-    except Exception:
-        count = 5
-
-    # 1. If Gemini API Key is available, call Gemini Flash generator
-    if GEMINI_API_KEY and len(GEMINI_API_KEY.strip()) > 10:
-        try:
-            llm_questions = call_gemini_quiz_generator(manual_id, custom_text, difficulty, count=count, doc_name=doc_name)
-            if llm_questions and len(llm_questions) >= count:
-                return llm_questions[:count]
-            elif llm_questions and len(llm_questions) > 0:
-                # If Gemini returned partial, complement with procedural
-                need_more = count - len(llm_questions)
-                extra = _generate_procedural_pool(manual_id, difficulty, need_more)
-                return llm_questions + extra
-        except Exception as e:
-            print("Gemini API error, falling back to procedural engine:", e)
-
-    # 2. Procedural Bloom's Generation Fallback
-    return _generate_procedural_pool(manual_id, difficulty, count)
+# generate_dynamic_quiz defined below with warm caching and async prefetch
 
 def _generate_procedural_pool(manual_id, difficulty, count):
     key = manual_id if manual_id in BLOOM_MANUAL_QUESTIONS else "manual_plfs_2026"
@@ -1137,3 +1109,98 @@ Return ONLY valid JSON array (no markdown text):
             pass
 
     return []
+
+# =====================================================================
+# IN-MEMORY WARM QUIZ CACHE & ASYNC PREFETCH FOR SUB-50MS RESPONSE
+# =====================================================================
+_QUIZ_CACHE_LOCK = threading.Lock()
+_QUIZ_WARM_CACHE = {}  # {(manual_id, difficulty): list_of_questions}
+_QUIZ_PREFETCH_IN_PROGRESS = set()
+
+def _replenish_quiz_cache(manual_id, difficulty, count=10, doc_name=""):
+    cache_key = (manual_id, difficulty)
+    with _QUIZ_CACHE_LOCK:
+        if cache_key in _QUIZ_PREFETCH_IN_PROGRESS:
+            return
+        _QUIZ_PREFETCH_IN_PROGRESS.add(cache_key)
+
+    try:
+        api_key = get_gemini_api_key()
+        res = None
+        if api_key and len(api_key.strip()) > 10:
+            try:
+                res = call_gemini_quiz_generator(manual_id, "", difficulty, count=count, doc_name=doc_name)
+            except Exception as e:
+                print(f"[Prefetch] Quiz generation error for {cache_key}: {e}")
+
+        if not res or len(res) < 5:
+            res = _generate_procedural_pool(manual_id, difficulty, max(count, 10))
+
+        with _QUIZ_CACHE_LOCK:
+            _QUIZ_WARM_CACHE[cache_key] = res
+            print(f"[Prefetch] Quiz warm cache primed for {cache_key} ({len(res)} questions)")
+    finally:
+        with _QUIZ_CACHE_LOCK:
+            _QUIZ_PREFETCH_IN_PROGRESS.discard(cache_key)
+
+def prewarm_all_quiz_caches():
+    """
+    Pre-populates quiz cache on server startup for standard MoSPI manuals.
+    Seeds immediately with procedural questions (<2ms) and upgrades in background with Gemini LLM.
+    """
+    manuals = ["manual_plfs_2026", "manual_cpi_rural", "manual_asuse_2026"]
+    difficulties = ["scenario", "recall", "analytical"]
+    for m in manuals:
+        for d in difficulties:
+            cache_key = (m, d)
+            if cache_key not in _QUIZ_WARM_CACHE:
+                _QUIZ_WARM_CACHE[cache_key] = _generate_procedural_pool(m, d, 10)
+            threading.Thread(target=_replenish_quiz_cache, args=(m, d, 10), daemon=True).start()
+
+def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficulty="scenario", count=5, doc_name=""):
+    """
+    Generates dynamic randomized questions strictly following Bloom's Taxonomy:
+    - Standard MoSPI Manuals: returns INSTANTLY (< 50ms) from in-memory warm cache.
+    - Custom Uploaded Manual: calls Gemini Flash with bounded tokens and fallback.
+    """
+    try:
+        count = int(count)
+    except Exception:
+        count = 5
+
+    diff_clean = difficulty.lower() if difficulty else "scenario"
+    if diff_clean not in ["recall", "scenario", "analytical"]:
+        diff_clean = "scenario"
+
+    # Standard manuals (no custom PDF text uploaded): serve from warm cache!
+    if not custom_text or len(custom_text.strip()) < 20:
+        cache_key = (manual_id, diff_clean)
+        with _QUIZ_CACHE_LOCK:
+            cached_pool = _QUIZ_WARM_CACHE.get(cache_key)
+
+        # Trigger non-blocking replenishment in background for continuous freshness
+        threading.Thread(target=_replenish_quiz_cache, args=(manual_id, diff_clean, max(count, 10), doc_name), daemon=True).start()
+
+        if cached_pool and len(cached_pool) >= count:
+            shuffled = list(cached_pool)
+            random.shuffle(shuffled)
+            return shuffled[:count]
+        elif cached_pool and len(cached_pool) > 0:
+            extra = _generate_procedural_pool(manual_id, diff_clean, count - len(cached_pool))
+            return list(cached_pool) + extra
+
+    # Custom uploaded text: call live Gemini Flash with fallback
+    api_key = get_gemini_api_key()
+    if api_key and len(api_key.strip()) > 10:
+        try:
+            llm_questions = call_gemini_quiz_generator(manual_id, custom_text, diff_clean, count=count, doc_name=doc_name)
+            if llm_questions and len(llm_questions) >= count:
+                return llm_questions[:count]
+            elif llm_questions and len(llm_questions) > 0:
+                need_more = count - len(llm_questions)
+                extra = _generate_procedural_pool(manual_id, diff_clean, need_more)
+                return llm_questions + extra
+        except Exception as e:
+            print("Gemini API error, falling back to procedural engine:", e)
+
+    return _generate_procedural_pool(manual_id, diff_clean, count)

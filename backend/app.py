@@ -26,9 +26,10 @@ if os.path.exists(FRONTEND_DIST):
             return send_from_directory(FRONTEND_DIST, path)
         return send_from_directory(FRONTEND_DIST, "index.html")
 
-# Pre-warm AI diagnostic caches on startup for instant <50ms responses
+# Pre-warm AI diagnostic and quiz caches on startup for instant <50ms responses
 try:
     ai_engine.prewarm_all_diagnostic_caches()
+    ai_engine.prewarm_all_quiz_caches()
 except Exception as e:
     print("Error during startup cache pre-warming:", e)
 
