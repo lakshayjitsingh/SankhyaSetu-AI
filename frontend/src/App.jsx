@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Compass, Upload, CheckCircle2, AlertTriangle, ArrowRight, Play, 
-  ShieldCheck, Clock, BookOpen, LogOut, Sparkles, User, 
+  ShieldCheck, ShieldAlert, Clock, BookOpen, LogOut, Sparkles, User, 
   ArrowLeft, Check, ChevronRight, X, ExternalLink, Settings, Key,
   Home, BarChart3, FileText, Award, TrendingUp, RefreshCw, Layers, CheckCircle,
   Menu
@@ -84,11 +84,92 @@ const STATISTICAL_FIELDS = [
 export default function App() {
   const [googleClientId] = useState("422382282637-ibgjnag16ogstaj2vevddvpcnipj4q9r.apps.googleusercontent.com");
 
-  // Authenticated User State
+  // Inactivity Security Timer: 2 minutes total (120s), warning at 90s (30s countdown)
+  const INACTIVITY_LIMIT_MS = 120 * 1000;
+  const WARNING_TRIGGER_MS = 90 * 1000;
+
+  const [inactivityNotice, setInactivityNotice] = useState('');
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(30);
+
+  // Authenticated User State with Tab-Close / Reopen Expiry Check
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('sankhya_user');
+    const lastActive = localStorage.getItem('sankhya_last_activity');
+    if (saved && lastActive) {
+      const elapsed = Date.now() - parseInt(lastActive, 10);
+      if (elapsed > 120 * 1000) {
+        localStorage.removeItem('sankhya_user');
+        localStorage.removeItem('sankhya_last_activity');
+        return null;
+      }
+    }
     return saved ? JSON.parse(saved) : null;
   });
+
+  const lastActiveRef = useRef(Date.now());
+
+  // Listen to user activity & run session expiration timer
+  useEffect(() => {
+    if (!user) {
+      setShowInactivityWarning(false);
+      return;
+    }
+
+    lastActiveRef.current = Date.now();
+    localStorage.setItem('sankhya_last_activity', Date.now().toString());
+
+    let throttleTimer = null;
+    const handleActivity = () => {
+      const now = Date.now();
+      lastActiveRef.current = now;
+      if (!throttleTimer) {
+        throttleTimer = setTimeout(() => {
+          localStorage.setItem('sankhya_last_activity', Date.now().toString());
+          throttleTimer = null;
+        }, 2000);
+      }
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(ev => window.addEventListener(ev, handleActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastActiveRef.current;
+
+      if (elapsed >= INACTIVITY_LIMIT_MS) {
+        setShowInactivityWarning(false);
+        setUser(null);
+        setActiveTab('home');
+        setDirectEmail('');
+        setDirectPassword('');
+        setAuthError('');
+        localStorage.removeItem('sankhya_user');
+        localStorage.removeItem('sankhya_last_activity');
+        setInactivityNotice('Session automatically locked after 2 minutes of inactivity for MoSPI data confidentiality (CERT-In / Collection of Statistics Act 2008).');
+      } else if (elapsed >= WARNING_TRIGGER_MS) {
+        const rem = Math.max(1, Math.ceil((INACTIVITY_LIMIT_MS - elapsed) / 1000));
+        setSecondsRemaining(rem);
+        setShowInactivityWarning(true);
+      } else {
+        setShowInactivityWarning(false);
+      }
+    }, 1000);
+
+    return () => {
+      events.forEach(ev => window.removeEventListener(ev, handleActivity));
+      clearInterval(interval);
+      if (throttleTimer) clearTimeout(throttleTimer);
+    };
+  }, [user]);
+
+  const extendSession = () => {
+    lastActiveRef.current = Date.now();
+    localStorage.setItem('sankhya_last_activity', Date.now().toString());
+    setShowInactivityWarning(false);
+    setSecondsRemaining(30);
+  };
 
   // Sidebar Active Navigation Item: 'home', 'diagnostic', 'upload_quiz', or 'dashboard'
   const [activeTab, setActiveTab] = useState('home');
@@ -264,6 +345,8 @@ export default function App() {
                 };
                 setUser(userData);
                 localStorage.setItem('sankhya_user', JSON.stringify(userData));
+                localStorage.setItem('sankhya_last_activity', Date.now().toString());
+                setInactivityNotice('');
                 
                 if (!existingHasOnboarded) {
                   setShowFieldModal(true);
@@ -353,6 +436,8 @@ export default function App() {
       };
       setUser(userData);
       localStorage.setItem('sankhya_user', JSON.stringify(userData));
+      localStorage.setItem('sankhya_last_activity', Date.now().toString());
+      setInactivityNotice('');
       setDirectPassword('');
       setDirectEmail('');
       setShowFieldModal(true);
@@ -379,6 +464,8 @@ export default function App() {
       };
       setUser(userData);
       localStorage.setItem('sankhya_user', JSON.stringify(userData));
+      localStorage.setItem('sankhya_last_activity', Date.now().toString());
+      setInactivityNotice('');
       setDirectPassword('');
       setDirectEmail('');
     }
@@ -390,7 +477,9 @@ export default function App() {
     setDirectEmail('');
     setDirectPassword('');
     setAuthError('');
+    setShowInactivityWarning(false);
     localStorage.removeItem('sankhya_user');
+    localStorage.removeItem('sankhya_last_activity');
   };
 
   // Confirm Field Selection from Onboarding Modal (Saves hasCompletedOnboarding)
@@ -650,6 +739,16 @@ export default function App() {
                   : "Enter your credentials or use Google OAuth to access your account."}
               </p>
             </div>
+
+            {inactivityNotice && (
+              <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-left">
+                  <span className="font-bold text-amber-800 block">Security Auto-Lock Triggered</span>
+                  <p className="text-[11px] text-amber-700 leading-relaxed">{inactivityNotice}</p>
+                </div>
+              </div>
+            )}
 
             {authError && (
               <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs flex items-center gap-2.5 animate-in fade-in duration-150">
@@ -937,9 +1036,15 @@ export default function App() {
             </div>
           </div>
 
-          <span className="text-[11px] font-semibold px-3 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full font-mono">
-            SIH Problem #SIH26101
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              Session Security: 2m Auto-Lock
+            </span>
+            <span className="text-[11px] font-semibold px-3 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full font-mono">
+              SIH Problem #SIH26101
+            </span>
+          </div>
         </header>
 
         {/* Content Container */}
@@ -2492,6 +2597,52 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MoSPI & Mission Karmayogi Statutory Inactivity Warning Modal */}
+      {showInactivityWarning && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-[#ebdcc8] rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 mx-auto flex items-center justify-center relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-30"></span>
+              <ShieldAlert className="w-8 h-8 relative z-10" />
+            </div>
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full border border-amber-300">
+                Statutory Security Compliance
+              </span>
+              <h3 className="text-xl font-black text-slate-900">
+                Session Inactivity Warning
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Under Mission Karmayogi (DoPT) & Collection of Statistics Act 2008 standards, unattended sessions on statistical terminals are automatically locked to safeguard census micro-data.
+              </p>
+            </div>
+            <div className="p-4 bg-[#faf5ec] border border-[#ebdcc8] rounded-2xl flex flex-col items-center justify-center">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Locking out in</span>
+              <span className="text-3xl font-black text-[#ea8b21] font-mono mt-1">
+                {secondsRemaining}s
+              </span>
+              <span className="text-[11px] text-slate-400 mt-1">Move your cursor or click below to stay signed in</span>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                Sign Out Now
+              </button>
+              <button
+                type="button"
+                onClick={extendSession}
+                className="flex-1 py-2.5 px-4 bg-[#ea8b21] hover:bg-[#d97d19] text-white rounded-xl font-bold text-xs shadow-md shadow-[#ea8b21]/20 transition cursor-pointer"
+              >
+                Stay Logged In
+              </button>
+            </div>
           </div>
         </div>
       )}
