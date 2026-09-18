@@ -82,7 +82,7 @@ const STATISTICAL_FIELDS = [
 ];
 
 export default function App() {
-  const [googleClientId] = useState("422382282637-6i23lanvhcl8bko1m9d9lae16i4dtbrb.apps.googleusercontent.com");
+  const [googleClientId] = useState("422382282637-ibgjnag16ogstaj2vevddvpcnipj4q9r.apps.googleusercontent.com");
 
   // Authenticated User State
   const [user, setUser] = useState(() => {
