@@ -35,10 +35,12 @@ except Exception as e:
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
+    key = ai_engine.get_gemini_api_key()
     return jsonify({
         "status": "healthy",
         "service": "SankhyaSetu AI - MoSPI Capacity Building Engine",
-        "version": "1.0.0",
+        "version": "1.1.0",
+        "gemini_configured": bool(key and len(key.strip()) > 10),
         "cache_warm": len(getattr(ai_engine, "_DIAGNOSTIC_WARM_CACHE", {})) > 0,
         "igot_integration": "Enabled (FRAC Compliant / SCORM 2004)"
     })
