@@ -177,6 +177,17 @@ export default function App() {
         localStorage.removeItem('sankhya_user');
         localStorage.removeItem('sankhya_last_activity');
         setInactivityNotice('Session automatically locked after 2 minutes of inactivity for MoSPI data confidentiality (CERT-In / Collection of Statistics Act 2008).');
+        setUploadedFileName('');
+        setCustomText('');
+        setSelectedManual('manual_cpi_rural');
+        setQuizQuestions([]);
+        setQuizAnswers({});
+        setQuizEvaluation(null);
+        setQuizLatency(null);
+        setDiagnosticQuestions([]);
+        setDiagnosticAnswers({});
+        setDiagnosticResult(null);
+        setDiagnosticLatency(null);
       } else if (elapsed >= WARNING_TRIGGER_MS) {
         const rem = Math.max(1, Math.ceil((INACTIVITY_LIMIT_MS - elapsed) / 1000));
         setSecondsRemaining(rem);
@@ -512,6 +523,17 @@ export default function App() {
     setShowInactivityWarning(false);
     localStorage.removeItem('sankhya_user');
     localStorage.removeItem('sankhya_last_activity');
+    setUploadedFileName('');
+    setCustomText('');
+    setSelectedManual('manual_cpi_rural');
+    setQuizQuestions([]);
+    setQuizAnswers({});
+    setQuizEvaluation(null);
+    setQuizLatency(null);
+    setDiagnosticQuestions([]);
+    setDiagnosticAnswers({});
+    setDiagnosticResult(null);
+    setDiagnosticLatency(null);
   };
 
   // Confirm Field Selection from Onboarding Modal (Saves hasCompletedOnboarding)
