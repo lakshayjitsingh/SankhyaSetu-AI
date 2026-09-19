@@ -1285,7 +1285,7 @@ export default function App() {
         </div>
 
         {/* Bottom of Sidebar: Officer Profile Card */}
-        <div className="p-3.5 m-2.5 rounded-2xl bg-white/80 border border-[#ebdcc8] shadow-2xs">
+        <div className="p-3.5 m-2.5 rounded-2xl bg-white/80 border border-[#ebdcc8] shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden">
               <div className="w-10 h-10 rounded-full bg-[#ea8b21] text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
@@ -1299,33 +1299,32 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
-              {!user?.isGoogleVerified && (
-                <button
-                  onClick={() => {
-                    setShowChangePasswordModal(true);
-                    setChangePassError('');
-                    setChangePassSuccess('');
-                    setCurrentPassInput('');
-                    setNewPassInput('');
-                    setConfirmPassInput('');
-                  }}
-                  title="Change Password"
-                  className="p-2 text-slate-600 hover:text-[#ea8b21] hover:bg-[#ea8b21]/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[#ea8b21]/20 shrink-0"
-                >
-                  <Key className="w-4 h-4" />
-                </button>
-              )}
-
-              <button
-                onClick={handleLogout}
-                title="Sign Out"
-                className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* Dedicated "Change Password" Button (Option A: strictly for non-Google users) */}
+          {!user?.isGoogleVerified && (
+            <button
+              onClick={() => {
+                setShowChangePasswordModal(true);
+                setChangePassError('');
+                setChangePassSuccess('');
+                setCurrentPassInput('');
+                setNewPassInput('');
+                setConfirmPassInput('');
+              }}
+              className="w-full py-2 px-3 bg-[#faf5ec] hover:bg-[#eee3d3] border border-[#ebdcc8] rounded-xl text-xs font-bold text-slate-800 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+            >
+              <Key className="w-3.5 h-3.5 text-[#ea8b21]" />
+              <span>Change Password</span>
+            </button>
+          )}
         </div>
 
       </aside>
