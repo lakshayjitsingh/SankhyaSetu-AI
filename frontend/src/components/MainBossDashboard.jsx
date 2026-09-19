@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Building2, Users, Award, TrendingUp, AlertTriangle, CheckCircle2, Clock, 
   Send, Mail, Trash2, Eye, ArrowLeft, ArrowRight, RefreshCw, Check, 
-  ChevronRight, X, ShieldCheck
+  ChevronRight, X, ShieldCheck, LogOut
 } from 'lucide-react';
 
 // Prototype Supervisors Data across the 3 Fields
@@ -72,7 +72,7 @@ const INITIAL_SUPERVISORS = [
   }
 ];
 
-export default function MainBossDashboard({ onBackToOfficer, onSwitchToSupervisor }) {
+export default function MainBossDashboard({ onLogout, activeBoss }) {
   const [supervisors, setSupervisors] = useState(INITIAL_SUPERVISORS);
   const [viewSquad, setViewSquad] = useState(null);
   const [purgeTarget, setPurgeTarget] = useState(null);
@@ -177,22 +177,19 @@ export default function MainBossDashboard({ onBackToOfficer, onSwitchToSuperviso
             </div>
           </div>
 
-          {/* Quick Navigation Switcher */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Directorate Identity & Sign Out Button */}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <div className="text-xs font-bold text-slate-900">Dr. S. K. Mukherjee</div>
+              <div className="text-[10px] font-mono text-[#ea8b21] font-bold">DDG-HQ-001</div>
+            </div>
             <button
-              onClick={onBackToOfficer}
-              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-[#faf5ec] text-slate-800 border border-[#ebdcc8] shadow-2xs transition cursor-pointer"
-              title="Switch to Field Officer View"
+              onClick={onLogout}
+              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-slate-800 hover:text-rose-700 border border-[#ebdcc8] hover:border-rose-200 shadow-2xs transition cursor-pointer"
+              title="Sign Out of Main Boss Command Hub"
             >
-              <ArrowLeft className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Officer View
-            </button>
-            <button
-              onClick={onSwitchToSupervisor}
-              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-[#faf5ec] hover:bg-white text-slate-800 border border-[#ebdcc8] shadow-2xs transition cursor-pointer"
-              title="Switch to Field Supervisor View"
-            >
-              Supervisor Hub
+              <LogOut className="w-3.5 h-3.5 mr-1.5" />
+              Sign Out
             </button>
           </div>
         </div>

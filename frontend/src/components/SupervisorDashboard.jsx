@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Users, Mail, UserX, UserCheck, Send, CheckCircle2, Clock, 
   AlertTriangle, Shield, ArrowRight, ArrowLeft, RefreshCw, Copy, Check,
-  ChevronDown, Award, TrendingUp, Info, ShieldCheck
+  ChevronDown, Award, TrendingUp, Info, ShieldCheck, LogOut
 } from 'lucide-react';
 
 // Prototype Squad Data across the 3 Official MoSPI Fields
@@ -180,9 +180,9 @@ const INITIAL_SQUADS = {
   }
 };
 
-export default function SupervisorDashboard({ onBackToOfficer, onSwitchToBoss }) {
+export default function SupervisorDashboard({ onLogout, initialFieldId, activeSupervisor }) {
   const [squads, setSquads] = useState(INITIAL_SQUADS);
-  const [selectedFieldId, setSelectedFieldId] = useState('survey_supervisor_asuse');
+  const [selectedFieldId, setSelectedFieldId] = useState(initialFieldId || 'survey_supervisor_asuse');
   const [emailModalOfficer, setEmailModalOfficer] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [copied, setCopied] = useState(false);
@@ -292,22 +292,19 @@ export default function SupervisorDashboard({ onBackToOfficer, onSwitchToBoss })
           </div>
 
           {/* Navigation Switchers in Main Site Button Style */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Supervisor Identity & Sign Out Button */}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <div className="text-xs font-bold text-slate-900">{currentSquad.supervisor}</div>
+              <div className="text-[10px] font-mono text-[#ea8b21] font-bold">{currentSquad.supervisorBadge}</div>
+            </div>
             <button
-              onClick={onBackToOfficer}
-              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-[#faf5ec] text-slate-800 border border-[#ebdcc8] shadow-2xs transition cursor-pointer"
-              title="Return to Officer Training & Quiz Dashboard"
+              onClick={onLogout}
+              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-slate-800 hover:text-rose-700 border border-[#ebdcc8] hover:border-rose-200 shadow-2xs transition cursor-pointer"
+              title="Sign Out of Supervisor Console"
             >
-              <ArrowLeft className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-              Officer View
-            </button>
-            <button
-              onClick={onSwitchToBoss}
-              className="inline-flex items-center text-xs font-bold px-4 py-2 rounded-xl bg-[#ea8b21] hover:bg-[#d97d16] text-white shadow-sm shadow-[#ea8b21]/20 transition cursor-pointer"
-              title="Switch to Ministry HQ Director General View"
-            >
-              Main Boss HQ
-              <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              <LogOut className="w-3.5 h-3.5 mr-1.5" />
+              Sign Out
             </button>
           </div>
         </div>

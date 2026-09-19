@@ -84,7 +84,16 @@ const STATISTICAL_FIELDS = [
 ];
 
 export default function App() {
-  const [currentPortal, setCurrentPortal] = useState('officer'); // 'officer' | 'supervisor' | 'boss'
+  const [currentPortal, setCurrentPortal] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sankhya_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u.portal === 'boss' || u.portal === 'supervisor') return u.portal;
+      }
+    } catch (e) {}
+    return 'officer';
+  });
   const [googleClientId] = useState("422382282637-ibgjnag16ogstaj2vevddvpcnipj4q9r.apps.googleusercontent.com");
 
   // Inactivity Security Timer: 2 minutes total (120s), warning at 90s (30s countdown)
@@ -637,6 +646,52 @@ export default function App() {
         }
 
         const officer = data.officer;
+
+        // Check if this is a Supervisory or Main Boss Account
+        if (officer?.role === 'boss' || officer?.portal === 'boss' || trimmedEmail === 'boss@gmail.com') {
+          setCurrentPortal('boss');
+          const bossData = {
+            name: officer?.name || 'Dr. S. K. Mukherjee',
+            email: trimmedEmail,
+            role: 'boss',
+            portal: 'boss',
+            badge: 'DDG-HQ-001',
+            department: 'MoSPI Central Directorate, New Delhi',
+            loginTime: new Date().toLocaleTimeString()
+          };
+          setUser(bossData);
+          localStorage.setItem('sankhya_user', JSON.stringify(bossData));
+          localStorage.setItem('sankhya_last_activity', Date.now().toString());
+          setInactivityNotice('');
+          setDirectPassword('');
+          setDirectEmail('');
+          setIsAuthenticating(false);
+          return;
+        }
+
+        if (officer?.role === 'supervisor' || officer?.portal === 'supervisor' || trimmedEmail.startsWith('supervisor')) {
+          setCurrentPortal('supervisor');
+          const assignedField = officer?.role_id || (trimmedEmail === 'supervisor2@gmail.com' ? 'field_investigator_nsso' : (trimmedEmail === 'supervisor3@gmail.com' ? 'junior_statistical_officer_cso' : 'survey_supervisor_asuse'));
+          const supervisorData = {
+            name: officer?.name || (trimmedEmail === 'supervisor2@gmail.com' ? 'Sunita Devi' : (trimmedEmail === 'supervisor3@gmail.com' ? 'Anil Mehta' : 'Rajesh Kumar')),
+            email: trimmedEmail,
+            role: 'supervisor',
+            portal: 'supervisor',
+            assignedField: assignedField,
+            badge: officer?.badge || (trimmedEmail === 'supervisor2@gmail.com' ? 'SSO-VNS-108' : (trimmedEmail === 'supervisor3@gmail.com' ? 'SSO-BLR-114' : 'SSO-DEL-101')),
+            department: officer?.department || (trimmedEmail === 'supervisor2@gmail.com' ? 'Varanasi Cantt Unit #08' : (trimmedEmail === 'supervisor3@gmail.com' ? 'Bengaluru South Unit #12' : 'Delhi North Cadre Unit #04')),
+            loginTime: new Date().toLocaleTimeString()
+          };
+          setUser(supervisorData);
+          localStorage.setItem('sankhya_user', JSON.stringify(supervisorData));
+          localStorage.setItem('sankhya_last_activity', Date.now().toString());
+          setInactivityNotice('');
+          setDirectPassword('');
+          setDirectEmail('');
+          setIsAuthenticating(false);
+          return;
+        }
+
         const matchedField = STATISTICAL_FIELDS.find(f => f.role_id === officer?.role_id) || STATISTICAL_FIELDS[0];
         const userData = {
           name: officer?.name || trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase(),
@@ -839,6 +894,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
+    setCurrentPortal('officer');
     setActiveTab('home');
     setDirectEmail('');
     setDirectPassword('');
@@ -1097,8 +1153,9 @@ export default function App() {
   if (currentPortal === 'supervisor') {
     return (
       <SupervisorDashboard 
-        onBackToOfficer={() => setCurrentPortal('officer')}
-        onSwitchToBoss={() => setCurrentPortal('boss')}
+        onLogout={handleLogout}
+        initialFieldId={user?.assignedField || 'survey_supervisor_asuse'}
+        activeSupervisor={user}
       />
     );
   }
@@ -1106,8 +1163,8 @@ export default function App() {
   if (currentPortal === 'boss') {
     return (
       <MainBossDashboard 
-        onBackToOfficer={() => setCurrentPortal('officer')}
-        onSwitchToSupervisor={() => setCurrentPortal('supervisor')}
+        onLogout={handleLogout}
+        activeBoss={user}
       />
     );
   }
@@ -1147,25 +1204,7 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPortal('supervisor')}
-                className="text-[11px] font-bold px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full shadow-2xs transition flex items-center gap-1"
-                title="Open Supervisory Command Console"
-              >
-                <span>🛡️</span>
-                <span>Supervisor Hub</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPortal('boss')}
-                className="text-[11px] font-bold px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-full shadow-2xs transition flex items-center gap-1"
-                title="Open Ministry HQ Director General Console"
-              >
-                <span>👑</span>
-                <span>Main Boss HQ</span>
-              </button>
-              <span className="hidden sm:inline-block text-[11px] font-bold px-3 py-1 bg-white text-slate-900 border border-[#ebdcc8] rounded-full shadow-2xs">
+              <span className="text-[11px] font-bold px-3 py-1 bg-white text-slate-900 border border-[#ebdcc8] rounded-full shadow-2xs">
                 SIH Problem #SIH26101
               </span>
             </div>
@@ -1729,31 +1768,6 @@ export default function App() {
                 </span>
               )}
             </button>
-
-            {/* Supervisory Cadre Command Consoles */}
-            <div className="pt-3 mt-2 border-t border-[#ebdcc8]/80">
-              <div className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
-                Supervisory Consoles
-              </div>
-
-              {/* 5. Field Supervisor Hub */}
-              <button
-                onClick={() => { setCurrentPortal('supervisor'); setMobileSidebarOpen(false); }}
-                className="w-full px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-3 transition-all text-slate-800 hover:text-slate-950 hover:bg-[#eee3d3]/80"
-              >
-                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="tracking-tight">Field Supervisor Hub</span>
-              </button>
-
-              {/* 6. Main Boss HQ */}
-              <button
-                onClick={() => { setCurrentPortal('boss'); setMobileSidebarOpen(false); }}
-                className="w-full px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-3 transition-all text-slate-800 hover:text-slate-950 hover:bg-[#eee3d3]/80 mt-1"
-              >
-                <Award className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="tracking-tight">Director General HQ</span>
-              </button>
-            </div>
 
           </nav>
 

@@ -1,10 +1,11 @@
 """
 One-time / startup seeding script to populate Neon Cloud PostgreSQL with 
-Supervisory Cadres, Squad Submissions (Option B), and Field Officers.
+dedicated Supervisory Cadres table (supervisory_cadres) for the 3 Supervisors and Main Boss.
 """
 import sys
 import os
 import json
+from werkzeug.security import generate_password_hash
 
 sys.path.append(os.path.dirname(__file__))
 import db
@@ -17,7 +18,82 @@ def run_seed():
         return False
 
     with db.get_db_cursor(commit=True) as cur:
-        # 1. Ensure table squad_submissions exists
+        # 1. Create separate table: supervisory_cadres (COMPLETELY ISOLATED from officers table)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS supervisory_cadres (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL,              -- 'supervisor' or 'boss'
+                cadre_title VARCHAR(255) NOT NULL,      -- 'Senior Statistical Officer' / 'Deputy Director General'
+                department VARCHAR(255) NOT NULL,       -- e.g. 'Delhi North Unit #04'
+                field_id VARCHAR(100),                  -- 'survey_supervisor_asuse', 'field_investigator_nsso', 'junior_statistical_officer_cso'
+                badge VARCHAR(100),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 2. Populate the 4 dedicated admin accounts into supervisory_cadres
+        supervisory_accounts = [
+            (
+                "supervisor1@gmail.com",
+                generate_password_hash("123456"),
+                "Rajesh Kumar",
+                "supervisor",
+                "Senior Statistical Officer (SSO)",
+                "Delhi North Cadre Unit #04",
+                "survey_supervisor_asuse",
+                "SSO-DEL-101"
+            ),
+            (
+                "supervisor2@gmail.com",
+                generate_password_hash("123456"),
+                "Sunita Devi",
+                "supervisor",
+                "Senior Statistical Officer (SSO)",
+                "Varanasi Cantt Unit #08",
+                "field_investigator_nsso",
+                "SSO-VNS-108"
+            ),
+            (
+                "supervisor3@gmail.com",
+                generate_password_hash("123456"),
+                "Anil Mehta",
+                "supervisor",
+                "Senior Statistical Officer (SSO)",
+                "Bengaluru South Unit #12",
+                "junior_statistical_officer_cso",
+                "SSO-BLR-114"
+            ),
+            (
+                "boss@gmail.com",
+                generate_password_hash("123456"),
+                "Dr. S. K. Mukherjee",
+                "boss",
+                "Deputy Director General (DDG)",
+                "MoSPI Central Directorate, New Delhi",
+                "all_divisions",
+                "DDG-HQ-001"
+            )
+        ]
+
+        for email, pwd_hash, name, role, cadre, dept, field_id, badge in supervisory_accounts:
+            cur.execute("""
+                INSERT INTO supervisory_cadres (email, password, name, role, cadre_title, department, field_id, badge)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (email)
+                DO UPDATE SET 
+                    password = EXCLUDED.password,
+                    name = EXCLUDED.name,
+                    role = EXCLUDED.role,
+                    cadre_title = EXCLUDED.cadre_title,
+                    department = EXCLUDED.department,
+                    field_id = EXCLUDED.field_id,
+                    badge = EXCLUDED.badge;
+            """, (email, pwd_hash, name, role, cadre, dept, field_id, badge))
+
+        # 3. Ensure squad_submissions table exists for Option B tracking
         cur.execute("""
             CREATE TABLE IF NOT EXISTS squad_submissions (
                 id SERIAL PRIMARY KEY,
@@ -35,52 +111,10 @@ def run_seed():
             );
         """)
 
-        # 2. Add extra columns to officers if not present
-        cur.execute("ALTER TABLE officers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;")
-        cur.execute("ALTER TABLE officers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
-        cur.execute("ALTER TABLE officers ADD COLUMN IF NOT EXISTS supervisor_email VARCHAR(255);")
-
-        # 3. Insert / Update Seed Accounts (Supervisors + Main Boss + Officers)
-        all_accounts = [
-            # Supervisors
-            ("rajesh.supervisor@mospi.gov.in", "Rajesh Kumar", "survey_supervisor_asuse", "Senior Statistical Officer (ASUSE)", "Delhi North Unit #04", "manual", "supervisor123", "+91 98100-00101"),
-            ("sunita.supervisor@mospi.gov.in", "Sunita Devi", "field_investigator_nsso", "Senior Statistical Officer (PLFS)", "Varanasi Cantt Unit #08", "manual", "supervisor123", "+91 98100-00108"),
-            ("anil.supervisor@mospi.gov.in", "Anil Mehta", "junior_statistical_officer_cso", "Senior Statistical Officer (Prices)", "Bengaluru South Unit #12", "manual", "supervisor123", "+91 98100-00114"),
-            # Main Boss
-            ("director.general@mospi.gov.in", "Dr. S. K. Mukherjee", "director_general", "Deputy Director General (DDG)", "MoSPI Central Directorate, New Delhi", "manual", "director123", "+91 98100-00001"),
-            # ASUSE Squad Officers
-            ("amit.sharma@mospi.gov.in", "Amit Sharma", "survey_supervisor_asuse", "Field Investigator (ASUSE)", "Delhi North Unit #04", "manual", "officer123", "+91 98111-23041"),
-            ("priya.verma@mospi.gov.in", "Priya Verma", "survey_supervisor_asuse", "Junior Statistical Officer (ASUSE)", "Delhi North Unit #04", "manual", "officer123", "+91 98222-77192"),
-            ("rahul.deshmukh@mospi.gov.in", "Rahul Deshmukh", "survey_supervisor_asuse", "Field Investigator (ASUSE)", "Delhi North Unit #04", "manual", "officer123", "+91 98333-88410"),
-            # PLFS Squad Officers
-            ("vikram.m@mospi.gov.in", "Vikram Malhotra", "field_investigator_nsso", "Field Investigator (PLFS)", "Varanasi Cantt Unit #08", "manual", "officer123", "+91 98444-11029"),
-            ("pooja.n@mospi.gov.in", "Pooja Nair", "field_investigator_nsso", "Junior Statistical Officer (PLFS)", "Varanasi Cantt Unit #08", "manual", "officer123", "+91 98555-66120"),
-            ("manoj.t@mospi.gov.in", "Manoj Tiwari", "field_investigator_nsso", "Field Investigator (PLFS)", "Varanasi Cantt Unit #08", "manual", "officer123", "+91 98666-33918"),
-            # Household / CSO Squad Officers
-            ("suresh.p@mospi.gov.in", "Suresh Patel", "junior_statistical_officer_cso", "Field Investigator (CSO)", "Bengaluru South Unit #12", "manual", "officer123", "+91 98777-55019"),
-            ("neha.g@mospi.gov.in", "Neha Gupta", "junior_statistical_officer_cso", "Junior Statistical Officer (CSO)", "Bengaluru South Unit #12", "manual", "officer123", "+91 98888-22941"),
-            ("deepak.r@mospi.gov.in", "Deepak Rawat", "junior_statistical_officer_cso", "Field Investigator (CSO)", "Bengaluru South Unit #12", "manual", "officer123", "+91 98999-11488")
-        ]
-
-        for email, name, role_id, role_name, dept, auth, pwd, phone in all_accounts:
-            cur.execute("""
-                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, phone, last_active, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, TRUE)
-                ON CONFLICT (email) 
-                DO UPDATE SET 
-                    name = EXCLUDED.name,
-                    role_id = EXCLUDED.role_id,
-                    role_name = EXCLUDED.role_name,
-                    department = EXCLUDED.department,
-                    phone = EXCLUDED.phone,
-                    password = COALESCE(officers.password, EXCLUDED.password);
-            """, (email, name, role_id, role_name, dept, auth, pwd, phone))
-
-        # 4. Seed Squad Submissions (Option B data)
         squads = [
-            ('squad_asuse_delhi', 'Delhi North Cadre Unit #04', 'survey_supervisor_asuse', 'Rajesh Kumar', 'rajesh.supervisor@mospi.gov.in', 'submitted', 'Today, 5:02 PM', 3, 2, 75.0),
-            ('squad_plfs_varanasi', 'Varanasi Cantt Unit #08', 'field_investigator_nsso', 'Sunita Devi', 'sunita.supervisor@mospi.gov.in', 'submitted', 'Today, 4:45 PM', 3, 3, 82.0),
-            ('squad_household_bengaluru', 'Bengaluru South Unit #12', 'junior_statistical_officer_cso', 'Anil Mehta', 'anil.supervisor@mospi.gov.in', 'pending', None, 3, 2, 62.3)
+            ('squad_asuse_delhi', 'Delhi North Cadre Unit #04', 'survey_supervisor_asuse', 'Rajesh Kumar', 'supervisor1@gmail.com', 'submitted', 'Today, 5:02 PM', 3, 2, 75.0),
+            ('squad_plfs_varanasi', 'Varanasi Cantt Unit #08', 'field_investigator_nsso', 'Sunita Devi', 'supervisor2@gmail.com', 'submitted', 'Today, 4:45 PM', 3, 3, 82.0),
+            ('squad_household_bengaluru', 'Bengaluru South Unit #12', 'junior_statistical_officer_cso', 'Anil Mehta', 'supervisor3@gmail.com', 'pending', None, 3, 2, 62.3)
         ]
 
         for sq in squads:
@@ -101,25 +135,7 @@ def run_seed():
                     updated_at = CURRENT_TIMESTAMP;
             """, sq)
 
-        # 5. Seed Assessment Attempts for historical scores
-        scores = [
-            ("amit.sharma@mospi.gov.in", "survey_supervisor_asuse", 88, True, {"Enterprise Frame Verification": 90, "GVA & Balance Sheet Audits": 86, "Unit Non-Response Weights": 88, "Coverage Checks": 88}),
-            ("priya.verma@mospi.gov.in", "survey_supervisor_asuse", 62, False, {"Enterprise Frame Verification": 65, "GVA & Balance Sheet Audits": 58, "Unit Non-Response Weights": 62, "Coverage Checks": 63}),
-            ("vikram.m@mospi.gov.in", "field_investigator_nsso", 84, True, {"Multi-Stage Sampling & Listing": 85, "Non-Response Revisit Protocols": 82, "CAPI Tablet Software": 86, "Data Scrutiny": 83}),
-            ("pooja.n@mospi.gov.in", "field_investigator_nsso", 79, True, {"Multi-Stage Sampling & Listing": 78, "Non-Response Revisit Protocols": 80, "CAPI Tablet Software": 80, "Data Scrutiny": 78}),
-            ("manoj.t@mospi.gov.in", "field_investigator_nsso", 83, True, {"Multi-Stage Sampling & Listing": 84, "Non-Response Revisit Protocols": 82, "CAPI Tablet Software": 82, "Data Scrutiny": 84}),
-            ("suresh.p@mospi.gov.in", "junior_statistical_officer_cso", 72, True, {"Base Year Revisions": 70, "Price Quotation Scrutiny": 75, "NIC-2008 Classification": 72, "Imputation Protocols": 71}),
-            ("neha.g@mospi.gov.in", "junior_statistical_officer_cso", 70, True, {"Base Year Revisions": 72, "Price Quotation Scrutiny": 68, "NIC-2008 Classification": 70, "Imputation Protocols": 70}),
-            ("deepak.r@mospi.gov.in", "junior_statistical_officer_cso", 45, False, {"Base Year Revisions": 45, "Price Quotation Scrutiny": 48, "NIC-2008 Classification": 42, "Imputation Protocols": 45})
-        ]
-
-        for email, role_id, score, passed, radar in scores:
-            cur.execute("""
-                INSERT INTO assessment_attempts (officer_email, role_id, score_achieved, passed, radar_scores, detailed_answers, attempt_timestamp)
-                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, CURRENT_TIMESTAMP)
-            """, (email, role_id, score, passed, json.dumps(radar), json.dumps([])))
-
-        print("SUCCESS: Seeded all 3 Supervisors, Main Boss, 9 Officers, and Squad Submissions into Neon PostgreSQL!")
+        print("SUCCESS: Seeded supervisory_cadres table with supervisor1, supervisor2, supervisor3, and boss!")
         return True
 
 if __name__ == "__main__":
