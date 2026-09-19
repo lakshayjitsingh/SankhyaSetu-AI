@@ -146,6 +146,27 @@ def init_db():
             # Ensure password column exists with zero downtime
             cur.execute("""
                 ALTER TABLE officers ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+                ALTER TABLE officers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+                ALTER TABLE officers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+                ALTER TABLE officers ADD COLUMN IF NOT EXISTS supervisor_email VARCHAR(255);
+            """)
+
+            # Create squad_submissions table for Option B daily tracking
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS squad_submissions (
+                    id SERIAL PRIMARY KEY,
+                    squad_id VARCHAR(100) UNIQUE NOT NULL,
+                    squad_name VARCHAR(255) NOT NULL,
+                    field_id VARCHAR(100) NOT NULL,
+                    supervisor_name VARCHAR(255) NOT NULL,
+                    supervisor_email VARCHAR(255) NOT NULL,
+                    submission_status VARCHAR(50) DEFAULT 'pending',
+                    submitted_at VARCHAR(100),
+                    officer_count INT DEFAULT 3,
+                    active_count INT DEFAULT 3,
+                    avg_score NUMERIC(5,2) DEFAULT 0.0,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
             """)
 
             # Pre-seed standard accounts into Neon if not already present

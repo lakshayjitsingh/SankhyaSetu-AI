@@ -10,6 +10,8 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine
 } from 'recharts';
+import SupervisorDashboard from './components/SupervisorDashboard';
+import MainBossDashboard from './components/MainBossDashboard';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (
   typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -82,6 +84,7 @@ const STATISTICAL_FIELDS = [
 ];
 
 export default function App() {
+  const [currentPortal, setCurrentPortal] = useState('officer'); // 'officer' | 'supervisor' | 'boss'
   const [googleClientId] = useState("422382282637-ibgjnag16ogstaj2vevddvpcnipj4q9r.apps.googleusercontent.com");
 
   // Inactivity Security Timer: 2 minutes total (120s), warning at 90s (30s countdown)
@@ -1089,6 +1092,27 @@ export default function App() {
     .join('') : 'OF';
 
   // =========================================================================
+  // 0. SUPERVISORY COMMAND HUBS (TIER 1 & TIER 2 DASHBOARDS)
+  // =========================================================================
+  if (currentPortal === 'supervisor') {
+    return (
+      <SupervisorDashboard 
+        onBackToOfficer={() => setCurrentPortal('officer')}
+        onSwitchToBoss={() => setCurrentPortal('boss')}
+      />
+    );
+  }
+
+  if (currentPortal === 'boss') {
+    return (
+      <MainBossDashboard 
+        onBackToOfficer={() => setCurrentPortal('officer')}
+        onSwitchToSupervisor={() => setCurrentPortal('supervisor')}
+      />
+    );
+  }
+
+  // =========================================================================
   // 1. AUTHENTICATION SCREEN (IF NOT LOGGED IN)
   // =========================================================================
   if (!user) {
@@ -1101,6 +1125,7 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-white shadow-xs p-1.5 border border-[#ebdcc8] flex items-center justify-center shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
+                  {/* Karmayogi Bharat Lotus Petals & Chakra Motif */}
                   <circle cx="50" cy="50" r="44" stroke="#ea8b21" strokeWidth="2.5" strokeDasharray="4 2" />
                   <path d="M50 16 C40 32 30 45 50 68 C70 45 60 32 50 16 Z" fill="#ea8b21" opacity="0.9" />
                   <path d="M26 36 C38 42 46 54 50 68 C38 64 26 52 26 36 Z" fill="#0284c7" opacity="0.85" />
@@ -1122,7 +1147,25 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold px-3 py-1 bg-white text-slate-900 border border-[#ebdcc8] rounded-full shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setCurrentPortal('supervisor')}
+                className="text-[11px] font-bold px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full shadow-2xs transition flex items-center gap-1"
+                title="Open Supervisory Command Console"
+              >
+                <span>🛡️</span>
+                <span>Supervisor Hub</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPortal('boss')}
+                className="text-[11px] font-bold px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-full shadow-2xs transition flex items-center gap-1"
+                title="Open Ministry HQ Director General Console"
+              >
+                <span>👑</span>
+                <span>Main Boss HQ</span>
+              </button>
+              <span className="hidden sm:inline-block text-[11px] font-bold px-3 py-1 bg-white text-slate-900 border border-[#ebdcc8] rounded-full shadow-2xs">
                 SIH Problem #SIH26101
               </span>
             </div>
@@ -1686,6 +1729,31 @@ export default function App() {
                 </span>
               )}
             </button>
+
+            {/* Supervisory Cadre Command Consoles */}
+            <div className="pt-3 mt-2 border-t border-[#ebdcc8]/80">
+              <div className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                Supervisory Consoles
+              </div>
+
+              {/* 5. Field Supervisor Hub */}
+              <button
+                onClick={() => { setCurrentPortal('supervisor'); setMobileSidebarOpen(false); }}
+                className="w-full px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-3 transition-all text-slate-800 hover:text-slate-950 hover:bg-[#eee3d3]/80"
+              >
+                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="tracking-tight">Field Supervisor Hub</span>
+              </button>
+
+              {/* 6. Main Boss HQ */}
+              <button
+                onClick={() => { setCurrentPortal('boss'); setMobileSidebarOpen(false); }}
+                className="w-full px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-3 transition-all text-slate-800 hover:text-slate-950 hover:bg-[#eee3d3]/80 mt-1"
+              >
+                <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="tracking-tight">Director General HQ</span>
+              </button>
+            </div>
 
           </nav>
 
