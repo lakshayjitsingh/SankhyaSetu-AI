@@ -380,6 +380,14 @@ def sync_user():
         return jsonify({"error": "Email is required"}), 400
 
     officer = db.upsert_officer(email, name, role_id, role_name, department, auth_provider, password=password)
+    if isinstance(officer, dict) and officer.get("not_found"):
+        return jsonify({
+            "success": False,
+            "not_found": True,
+            "error": "Officer record not found in cloud database",
+            "neon_connected": db.is_connected()
+        }), 404
+
     return jsonify({
         "success": bool(officer),
         "officer": officer,

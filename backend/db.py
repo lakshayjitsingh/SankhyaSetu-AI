@@ -190,6 +190,38 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
             if cur is None:
                 return None
 
+            # If manual account and no password provided (e.g. background session sync),
+            # DO NOT create a new ghost officer if deleted from Neon. Only update existing.
+            if auth_provider == "manual" and not hashed_password:
+                cur.execute("SELECT id FROM officers WHERE email = %s;", (email,))
+                if not cur.fetchone():
+                    return {"not_found": True}
+                
+                cur.execute("""
+                    UPDATE officers SET
+                        name = COALESCE(%s, name),
+                        role_id = COALESCE(%s, role_id),
+                        role_name = COALESCE(%s, role_name),
+                        department = COALESCE(%s, department),
+                        last_active = CURRENT_TIMESTAMP
+                    WHERE email = %s
+                    RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active;
+                """, (name, role_id, role_name, department, email))
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "id": row[0],
+                        "email": row[1],
+                        "name": row[2],
+                        "role_id": row[3],
+                        "role_name": row[4],
+                        "department": row[5],
+                        "auth_provider": row[6],
+                        "created_at": row[7].isoformat() if row[7] else None,
+                        "last_active": row[8].isoformat() if row[8] else None
+                    }
+                return None
+
             cur.execute("""
                 INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, last_active)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
@@ -296,12 +328,15 @@ def verify_officer_login(email, password):
             if not row:
                 return {"success": False, "error": "No account found with this email. Please Sign Up first."}
 
+            auth_prov = row[6]
             db_password = row[7]
             is_valid = False
             needs_hash_upgrade = False
 
             if not db_password:
-                is_valid = False
+                if auth_prov == "google":
+                    return {"success": False, "error": "This account is registered via Google Sign-In. Please click 'Continue with Google'."}
+                return {"success": False, "error": "No password set for this account. Please Sign Up first."}
             elif db_password.startswith(("scrypt:", "pbkdf2:", "bcrypt:")):
                 is_valid = check_password_hash(db_password, password)
             else:
