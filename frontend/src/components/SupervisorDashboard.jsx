@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, Mail, UserX, UserCheck, Send, CheckCircle2, Clock, 
-  AlertTriangle, Shield, ArrowRight, ArrowLeft, RefreshCw, Copy, Check,
-  ChevronDown, Award, TrendingUp, Info, ShieldCheck, LogOut
+  Users, UserX, UserCheck, Send, CheckCircle2, Clock, 
+  AlertTriangle, Shield, ArrowRight, ArrowLeft, RefreshCw, Check,
+  ChevronDown, Award, TrendingUp, Info, ShieldCheck, LogOut,
+  LayoutDashboard, UserCheck2, Compass, FileCheck2, Menu, X, BookOpen, Layers
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (
@@ -189,9 +190,10 @@ const INITIAL_SQUADS = {
 export default function SupervisorDashboard({ onLogout, initialFieldId, activeSupervisor }) {
   const [squads, setSquads] = useState(INITIAL_SQUADS);
   const [selectedFieldId, setSelectedFieldId] = useState(initialFieldId || 'survey_supervisor_asuse');
-  const [emailModalOfficer, setEmailModalOfficer] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [squadFilter, setSquadFilter] = useState('all');
   const [toastMessage, setToastMessage] = useState('');
-  const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Live Cadre Registration Approvals State
@@ -258,7 +260,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
     setTimeout(() => setToastMessage(''), 4500);
   };
 
-  // Point 7: Direct Instant Deactivate on the row
+  // Direct Instant Deactivate / Reactivate
   const handleToggleDeactivate = (officerId) => {
     setSquads(prev => {
       const updatedOfficers = prev[selectedFieldId].officers.map(off => {
@@ -284,13 +286,13 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
 
     const target = currentSquad.officers.find(o => o.id === officerId);
     if (target && !target.isDeactivated) {
-      triggerToast(`Officer ${target.name} (${target.id}) has been relieved and deactivated. Login access suspended.`);
+      triggerToast(`Officer ${target.name} (${target.id}) has been relieved and deactivated. Field login suspended.`);
     } else if (target) {
       triggerToast(`Officer ${target.name} (${target.id}) account restored to active status.`);
     }
   };
 
-  // Point 8 (Option B): Submit Squad Status to HQ
+  // Submit Squad Status to HQ
   const handleSubmitSquadStatus = () => {
     setIsSubmitting(true);
     const now = new Date();
@@ -313,511 +315,890 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
   // Calculate high-level squad metrics
   const activeCount = currentSquad.officers.filter(o => !o.isDeactivated && o.status === 'active').length;
   const flaggedCount = currentSquad.officers.filter(o => !o.isDeactivated && (o.status === 'low_score' || o.status === 'inactive')).length;
+  const deactivatedCount = currentSquad.officers.filter(o => o.isDeactivated).length;
   const avgScore = Math.round(
     currentSquad.officers
       .filter(o => !o.isDeactivated)
       .reduce((acc, o) => acc + o.score, 0) / Math.max(1, currentSquad.officers.filter(o => !o.isDeactivated).length)
   );
 
-  return (
-    <div className="min-h-screen bg-[#fcfaf6] text-slate-900 font-sans pb-16">
-      
-      {/* Top Header - Karmayogi Bharat Branding (Matching Main Website) */}
-      <header className="sticky top-0 z-40 bg-[#faf5ec] border-b border-[#ebdcc8] shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          
-          <div className="flex items-center gap-3">
-            {/* Karmayogi Emblem Chakra Motif */}
-            <div className="w-10 h-10 rounded-2xl bg-white shadow-xs p-1.5 border border-[#ebdcc8] flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
-                <circle cx="50" cy="50" r="44" stroke="#ea8b21" strokeWidth="2.5" strokeDasharray="4 2" />
-                <path d="M50 16 C40 32 30 45 50 68 C70 45 60 32 50 16 Z" fill="#ea8b21" opacity="0.9" />
-                <path d="M26 36 C38 42 46 54 50 68 C38 64 26 52 26 36 Z" fill="#0284c7" opacity="0.85" />
-                <path d="M74 36 C62 42 54 54 50 68 C62 64 74 52 74 36 Z" fill="#10b981" opacity="0.85" />
-                <circle cx="50" cy="68" r="6" fill="#1e293b" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-lg tracking-tight text-slate-900">
-                  Sankhya<span className="text-[#ea8b21]">Setu</span>
-                </span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 rounded">
-                  MoSPI
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full">
-                  Tier-1 Supervisor Console
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-700 font-semibold">Field Operations Division • Cadre Management</p>
-            </div>
-          </div>
+  // Filter officers for squad table
+  const filteredOfficers = currentSquad.officers.filter(officer => {
+    if (squadFilter === 'active') return !officer.isDeactivated && officer.status === 'active';
+    if (squadFilter === 'flagged') return !officer.isDeactivated && (officer.status === 'low_score' || officer.status === 'inactive');
+    if (squadFilter === 'deactivated') return officer.isDeactivated;
+    return true;
+  });
 
-          {/* Navigation Switchers in Main Site Button Style */}
-          {/* Supervisor Identity & Sign Out Button */}
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="text-xs font-bold text-slate-900">{currentSquad.supervisor}</div>
-              <div className="text-[10px] font-mono text-[#ea8b21] font-bold">{currentSquad.supervisorBadge}</div>
+  const supervisorDisplayName = activeSupervisor?.name || currentSquad.supervisor;
+  const supervisorInitials = supervisorDisplayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(p => p[0].toUpperCase())
+    .join('') || 'SS';
+
+  return (
+    <div className="flex h-screen bg-[#fcfaf6] text-slate-900 font-sans overflow-hidden">
+      
+      {/* =====================================================================
+          LEFT SIDEBAR NAVIGATION (Official Karmayogi Bharat Color Scheme)
+          ===================================================================== */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#faf5ec] text-slate-800 border-r border-[#ebdcc8] flex flex-col justify-between transition-transform duration-200 md:static md:translate-x-0 ${
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        
+        {/* Top of Sidebar: Brand & Navigation */}
+        <div className="p-4 space-y-5">
+          
+          {/* Logo Brand Header */}
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#ebdcc8]/80 pb-4">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-10 h-10 rounded-2xl bg-white shadow-xs p-1.5 border border-[#ebdcc8] flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
+                  <circle cx="50" cy="50" r="44" stroke="#ea8b21" strokeWidth="2.5" strokeDasharray="4 2" />
+                  <path d="M50 16 C40 32 30 45 50 68 C70 45 60 32 50 16 Z" fill="#ea8b21" opacity="0.9" />
+                  <path d="M26 36 C38 42 46 54 50 68 C38 64 26 52 26 36 Z" fill="#0284c7" opacity="0.85" />
+                  <path d="M74 36 C62 42 54 54 50 68 C62 64 74 52 74 36 Z" fill="#10b981" opacity="0.85" />
+                  <circle cx="50" cy="68" r="6" fill="#1e293b" />
+                </svg>
+              </div>
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-lg tracking-tight text-slate-900">
+                    Sankhya<span className="text-[#ea8b21]">Setu</span>
+                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 rounded">
+                    MoSPI
+                  </span>
+                </div>
+                <p className="text-xs text-slate-900 font-semibold truncate">Tier-1 Supervisor Console</p>
+              </div>
             </div>
+
+            {/* Mobile Drawer Close (X) Button */}
             <button
-              onClick={onLogout}
-              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-slate-800 hover:text-rose-700 border border-[#ebdcc8] hover:border-rose-200 shadow-2xs transition cursor-pointer"
-              title="Sign Out of Supervisor Console"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="p-1.5 text-slate-700 hover:text-slate-900 hover:bg-[#eee3d3] rounded-xl transition-all md:hidden cursor-pointer shrink-0"
+              title="Close Menu"
+              aria-label="Close navigation menu"
             >
-              <LogOut className="w-3.5 h-3.5 mr-1.5" />
-              Sign Out
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </div>
-      </header>
 
-      {/* Toast Alert Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-emerald-300 text-emerald-900 p-4 rounded-2xl shadow-xl flex items-start space-x-3 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-          <div className="text-xs font-bold">{toastMessage}</div>
+          {/* Navigation Links */}
+          <nav className="space-y-2 pt-1">
+            
+            {/* 1. Squad Overview */}
+            <button
+              onClick={() => { setActiveTab('overview'); setMobileSidebarOpen(false); }}
+              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
+                activeTab === 'overview'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
+              }`}
+            >
+              <LayoutDashboard className={`w-5 h-5 shrink-0 ${activeTab === 'overview' ? 'text-white' : 'text-slate-800'}`} />
+              <span className="tracking-tight">Squad Hub</span>
+            </button>
+
+            {/* 2. Cadre Approvals */}
+            <button
+              onClick={() => { setActiveTab('approvals'); setMobileSidebarOpen(false); }}
+              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
+                activeTab === 'approvals'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <UserCheck2 className={`w-5 h-5 shrink-0 ${activeTab === 'approvals' ? 'text-white' : 'text-slate-800'}`} />
+                <span className="tracking-tight">Cadre Approvals</span>
+              </div>
+              {pendingApprovals.length > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+                  activeTab === 'approvals' 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30'
+                }`}>
+                  {pendingApprovals.length}
+                </span>
+              )}
+            </button>
+
+            {/* 3. Field Squad Scrutiny */}
+            <button
+              onClick={() => { setActiveTab('squad'); setMobileSidebarOpen(false); }}
+              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
+                activeTab === 'squad'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <Users className={`w-5 h-5 shrink-0 ${activeTab === 'squad' ? 'text-white' : 'text-slate-800'}`} />
+                <span className="tracking-tight">Field Squad Scrutiny</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+                activeTab === 'squad' 
+                  ? 'bg-white/20 text-white' 
+                  : 'bg-slate-200/80 text-slate-800'
+              }`}>
+                {currentSquad.officers.length}
+              </span>
+            </button>
+
+            {/* 4. Diagnostic Analytics */}
+            <button
+              onClick={() => { setActiveTab('competency'); setMobileSidebarOpen(false); }}
+              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
+                activeTab === 'competency'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
+              }`}
+            >
+              <Compass className={`w-5 h-5 shrink-0 ${activeTab === 'competency' ? 'text-white' : 'text-slate-800'}`} />
+              <span className="tracking-tight">Diagnostic Analytics</span>
+            </button>
+
+            {/* 5. Scrutiny Directives & Logs */}
+            <button
+              onClick={() => { setActiveTab('compliance'); setMobileSidebarOpen(false); }}
+              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
+                activeTab === 'compliance'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
+              }`}
+            >
+              <FileCheck2 className={`w-5 h-5 shrink-0 ${activeTab === 'compliance' ? 'text-white' : 'text-slate-800'}`} />
+              <span className="tracking-tight">Scrutiny Directives</span>
+            </button>
+
+          </nav>
+
         </div>
+
+        {/* Bottom of Sidebar: Supervisor Profile Card */}
+        <div className="p-3.5 m-2.5 rounded-2xl bg-white/80 border border-[#ebdcc8] shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-10 h-10 rounded-full bg-[#ea8b21] text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+                {supervisorInitials}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-sm font-bold text-slate-900 truncate">{supervisorDisplayName.split('(')[0]}</p>
+                <p className="text-xs font-medium text-emerald-700 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Supervisor Cadre
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onLogout}
+              title="Sign Out of Supervisor Console"
+              className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="px-2 py-1 bg-[#faf5ec] border border-[#ebdcc8] rounded-xl flex items-center justify-between text-[11px]">
+            <span className="text-slate-600 font-medium">Badge ID:</span>
+            <span className="font-mono font-bold text-[#ea8b21]">{currentSquad.supervisorBadge}</span>
+          </div>
+        </div>
+
+      </aside>
+
+      {/* Backdrop for mobile drawer */}
+      {mobileSidebarOpen && (
+        <div 
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+        ></div>
       )}
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+      {/* =====================================================================
+          MAIN WORKSPACE CONTENT AREA (Right Side)
+          ===================================================================== */}
+      <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50">
         
-        {/* Pending Officer Registration Approvals Alert */}
-        {pendingApprovals.length > 0 && (
-          <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-5 shadow-md space-y-4 animate-in fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold">
-                  <Clock className="w-4 h-4 animate-pulse" />
-                </div>
+        {/* Top Minimal Header Bar */}
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0 sticky top-0 z-30">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg md:hidden text-slate-800 cursor-pointer"
+              title="Open Menu"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-slate-900 font-bold">
+              <span className="font-bold text-slate-900">MoSPI Supervisor Console</span>
+              <span>/</span>
+              <span className="capitalize font-bold text-[#ea8b21]">
+                {activeTab === 'overview' ? 'Squad Hub' : (
+                  activeTab === 'approvals' ? 'Cadre Approvals' : (
+                    activeTab === 'squad' ? 'Squad Scrutiny' : (
+                      activeTab === 'competency' ? 'Diagnostic Analytics' : 'Scrutiny Directives'
+                    )
+                  )
+                )}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Field Switcher dropdown right in the top bar */}
+            <div className="relative inline-block">
+              <select
+                value={selectedFieldId}
+                onChange={(e) => setSelectedFieldId(e.target.value)}
+                className="appearance-none bg-[#faf5ec] hover:bg-white text-slate-900 text-xs font-bold py-1.5 pl-3 pr-8 rounded-xl border border-[#ebdcc8] cursor-pointer focus:outline-[#ea8b21] transition shadow-2xs"
+              >
+                <option value="survey_supervisor_asuse">ASUSE Enterprise</option>
+                <option value="field_investigator_nsso">PLFS Labour Force</option>
+                <option value="junior_statistical_officer_cso">HCES Household Survey</option>
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-600 absolute right-2.5 top-2.5 pointer-events-none" />
+            </div>
+
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              Supervisory Authority
+            </span>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6">
+
+          {/* Toast Notification */}
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-emerald-300 text-emerald-900 p-4 rounded-2xl shadow-xl flex items-start space-x-3 animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-xs font-bold">{toastMessage}</div>
+            </div>
+          )}
+
+          {/* ===================================================================
+              TAB 1: SQUAD OVERVIEW (HUB)
+              =================================================================== */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              {/* Squad Identity Banner & Submission Status */}
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-black text-amber-950 flex items-center gap-2">
-                    <span>Field Officer Registrations Awaiting Your Activation</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-full font-bold">
-                      {pendingApprovals.length} Pending
-                    </span>
-                  </h3>
-                  <p className="text-xs text-amber-800">
-                    New officers who have registered must be approved by a Supervisor before they can access the field deployment console.
+                  <div className="flex items-center space-x-2 text-xs text-slate-600 mb-1">
+                    <span>Cadre Supervisor: <strong className="text-slate-900 font-bold">{currentSquad.supervisor}</strong></span>
+                    <span>•</span>
+                    <span>Badge: <span className="font-mono font-bold text-[#ea8b21]">{currentSquad.supervisorBadge}</span></span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    {currentSquad.squadName}
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-1 max-w-2xl font-medium">
+                    {currentSquad.fieldName}. Official supervisory authority over field officers, daily survey attendance, accuracy scrutiny, and direct administrative offboarding.
+                  </p>
+                </div>
+
+                {/* Submit Squad Status Button */}
+                <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <div className="text-right hidden sm:block">
+                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">HQ Submission Status</div>
+                    <div className="text-xs font-bold mt-0.5">
+                      {currentSquad.status === 'submitted' ? (
+                        <span className="text-emerald-700 flex items-center justify-end font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Submitted ({currentSquad.submittedAt})
+                        </span>
+                      ) : (
+                        <span className="text-amber-700 flex items-center justify-end font-bold">
+                          <Clock className="w-3.5 h-3.5 mr-1 text-amber-600" /> Pending Daily Roll-Call
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSubmitSquadStatus}
+                    disabled={isSubmitting}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center transition shadow-md cursor-pointer ${
+                      currentSquad.status === 'submitted'
+                        ? 'bg-[#faf5ec] hover:bg-white text-slate-800 border border-[#ebdcc8]'
+                        : 'bg-[#ea8b21] hover:bg-[#d97d16] text-white shadow-[#ea8b21]/20'
+                    }`}
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {isSubmitting ? 'Syncing...' : (currentSquad.status === 'submitted' ? 'Re-Submit Squad Status to HQ' : 'Submit Squad Status to HQ')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Pending Approvals Alert Banner (if any) */}
+              {pendingApprovals.length > 0 && (
+                <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold shrink-0">
+                      <Clock className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-amber-950">
+                        {pendingApprovals.length} Field Officer Registration{pendingApprovals.length > 1 ? 's' : ''} Awaiting Activation
+                      </h4>
+                      <p className="text-xs text-amber-800 font-medium">
+                        Newly registered officers need your authorization to access the field deployment console.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('approvals')}
+                    className="self-start sm:self-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Review Approvals</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Squad Health KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                    <span>Squad Attendance (3 Officers)</span>
+                    <Users className="w-4 h-4 text-[#ea8b21]" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-900">
+                    {activeCount} <span className="text-sm font-bold text-slate-500">/ 3 On Active Duty</span>
+                  </div>
+                  <div className="text-xs text-emerald-700 font-bold mt-2 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block mr-1.5 animate-pulse"></span>
+                    Real-time MoSPI field telemetry
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                    <span>Squad Competency Average</span>
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-900">
+                    {avgScore}% <span className="text-sm font-bold text-slate-500">Readiness</span>
+                  </div>
+                  <div className="text-xs text-slate-600 mt-2 font-medium">
+                    Ministry Passing Threshold: <strong className="text-slate-900 font-bold">70.0%</strong>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                    <span>Attention Required</span>
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="text-2xl font-black text-amber-700">
+                    {flaggedCount} <span className="text-sm font-bold text-slate-500">{flaggedCount === 1 ? 'Officer Flagged' : 'Officers Flagged'}</span>
+                  </div>
+                  <div className="text-xs text-amber-800 font-medium mt-2">
+                    Automated low-score & inactivity checks
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Squad Scrutiny Preview */}
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#ebdcc8] pb-3">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">Assigned Cadre Roster ({currentSquad.officers.length})</h3>
+                    <p className="text-xs text-slate-600 font-medium">Inspect active status and performance for the {currentSquad.fieldName.split('(')[0]} unit.</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('squad')}
+                    className="self-start sm:self-auto text-xs font-bold text-[#ea8b21] hover:text-[#d97d16] flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Full Scrutiny Table</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {currentSquad.officers.map(off => (
+                    <div key={off.id} className={`p-4 rounded-xl border ${off.isDeactivated ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-[#faf5ec]/50 border-[#ebdcc8]'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-slate-900">{off.name}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          off.isDeactivated 
+                            ? 'bg-rose-100 text-rose-800'
+                            : (off.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900')
+                        }`}>
+                          {off.isDeactivated ? 'Relieved' : (off.status === 'active' ? 'Active' : 'Needs Review')}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono mt-1">{off.id} • {off.cadre}</div>
+                      <div className="mt-2 flex items-center justify-between text-xs">
+                        <span className="text-slate-600 font-medium">Readiness Score:</span>
+                        <span className="font-mono font-bold text-slate-900">{off.score}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Supervisory Guidelines */}
+              <div className="bg-[#faf5ec] rounded-2xl border border-[#ebdcc8] p-4 text-xs text-slate-700 flex items-start space-x-3">
+                <ShieldCheck className="w-5 h-5 text-[#ea8b21] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-slate-900">MoSPI Field Supervisory Guidelines (Collection of Statistics Act):</span>
+                  <p className="mt-0.5 leading-relaxed font-medium">
+                    Supervisors must scrutinize at least 10% of field schedules. Officers with scores under 70% must be coached before survey deployment. Deactivation revokes digital tablet keys while preserving historical survey audit logs.
                   </p>
                 </div>
               </div>
-              <button
-                onClick={fetchPendingApprovals}
-                disabled={isLoadingApprovals}
-                className="self-start sm:self-auto text-xs font-bold px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl transition flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApprovals ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {pendingApprovals.map((req) => (
-                <div key={req.id || req.email} className="bg-white border border-amber-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900">{req.name}</span>
-                      <span className="text-[9px] font-mono bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold uppercase">
-                        Pending Activation
+            </div>
+          )}
+
+          {/* ===================================================================
+              TAB 2: CADRE REGISTRATION APPROVALS
+              =================================================================== */}
+          {activeTab === 'approvals' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-[#ebdcc8] shadow-2xs">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <UserCheck2 className="w-5 h-5 text-[#ea8b21]" />
+                    <span>Cadre Officer Registration Approvals</span>
+                    {pendingApprovals.length > 0 && (
+                      <span className="text-xs px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">
+                        {pendingApprovals.length} Pending
                       </span>
-                    </div>
-                    <div className="text-xs font-mono text-[#ea8b21] font-bold">{req.email}</div>
-                    <div className="text-[11px] text-slate-600 font-medium">
-                      {req.role_name} • {req.department}
-                    </div>
-                    {req.requested_at && (
-                      <div className="text-[10px] text-slate-500 font-medium">
-                        Registered: {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(req.requested_at).toLocaleDateString()}
-                      </div>
                     )}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                    <button
-                      type="button"
-                      disabled={approvalActionLoading[req.email]}
-                      onClick={() => handleApproveOfficer(req.email, req.name, 'approve')}
-                      className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Approve & Activate</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={approvalActionLoading[req.email]}
-                      onClick={() => handleApproveOfficer(req.email, req.name, 'reject')}
-                      className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
-                    >
-                      Decline
-                    </button>
-                  </div>
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">
+                    Newly registered officers must be approved by a Supervisor before they can access the field deployment workspace.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Supervisor Identity Banner & Option B Submission */}
-        <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2 text-xs text-slate-600 mb-1">
-              <span>Cadre Supervisor: <strong className="text-slate-900 font-bold">{currentSquad.supervisor}</strong></span>
-              <span>•</span>
-              <span>Badge: <span className="font-mono font-bold text-[#ea8b21]">{currentSquad.supervisorBadge}</span></span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {currentSquad.squadName}
-              </h2>
-              {/* Field Switcher Dropdown (ASUSE, PLFS, Household) */}
-              <div className="relative inline-block">
-                <select
-                  value={selectedFieldId}
-                  onChange={(e) => setSelectedFieldId(e.target.value)}
-                  className="appearance-none bg-[#faf5ec] hover:bg-white text-slate-900 text-xs font-bold py-2 pl-3 pr-8 rounded-xl border border-[#ebdcc8] cursor-pointer focus:outline-[#ea8b21] transition shadow-2xs"
+                <button
+                  onClick={fetchPendingApprovals}
+                  disabled={isLoadingApprovals}
+                  className="self-start sm:self-auto text-xs font-bold px-3.5 py-2 bg-[#faf5ec] hover:bg-[#ebdcc8]/50 text-slate-800 border border-[#ebdcc8] rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <option value="survey_supervisor_asuse">Field: ASUSE Enterprise</option>
-                  <option value="field_investigator_nsso">Field: PLFS Labour Force</option>
-                  <option value="junior_statistical_officer_cso">Field: HCES Household Survey</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-600 absolute right-2.5 top-3 pointer-events-none" />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApprovals ? 'animate-spin' : ''}`} />
+                  <span>Refresh Queue</span>
+                </button>
               </div>
-            </div>
-            <p className="text-xs text-slate-600 mt-1 max-w-2xl font-medium">
-              Official supervisory authority over field officers, daily survey attendance, accuracy scrutiny, and direct administrative offboarding.
-            </p>
-          </div>
 
-          {/* Point 8 (Option B): Submit Squad Status Button */}
-          <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">HQ Submission Status</div>
-              <div className="text-xs font-bold mt-0.5">
-                {currentSquad.status === 'submitted' ? (
-                  <span className="text-emerald-700 flex items-center justify-end font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Submitted ({currentSquad.submittedAt})
-                  </span>
-                ) : (
-                  <span className="text-amber-700 flex items-center justify-end font-bold">
-                    <Clock className="w-3.5 h-3.5 mr-1 text-amber-600" /> Pending Daily Roll-Call
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={handleSubmitSquadStatus}
-              disabled={isSubmitting}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center transition shadow-md cursor-pointer ${
-                currentSquad.status === 'submitted'
-                  ? 'bg-[#faf5ec] hover:bg-white text-slate-800 border border-[#ebdcc8]'
-                  : 'bg-[#ea8b21] hover:bg-[#d97d16] text-white shadow-[#ea8b21]/20'
-              }`}
-            >
-              <Send className="w-4 h-4 mr-2" />
-              {isSubmitting ? 'Syncing...' : (currentSquad.status === 'submitted' ? 'Re-Submit Squad Status to HQ' : 'Submit Squad Status to HQ')}
-            </button>
-          </div>
-        </div>
-
-        {/* Squad Health KPI Cards in Warm Karmayogi Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white border border-[#ebdcc8] p-4 rounded-2xl shadow-2xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
-              <span>Squad Attendance (3 Officers)</span>
-              <Users className="w-4 h-4 text-[#ea8b21]" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              {activeCount} <span className="text-sm font-bold text-slate-500">/ 3 On Active Duty</span>
-            </div>
-            <div className="text-xs text-emerald-700 font-bold mt-1 flex items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block mr-1.5 animate-pulse"></span>
-              Real-time MoSPI field telemetry
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#ebdcc8] p-4 rounded-2xl shadow-2xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
-              <span>Squad Competency Average</span>
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              {avgScore}% <span className="text-sm font-bold text-slate-500">Readiness</span>
-            </div>
-            <div className="text-xs text-slate-600 mt-1 font-medium">
-              Ministry Passing Threshold: <strong className="text-slate-900 font-bold">70.0%</strong>
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#ebdcc8] p-4 rounded-2xl shadow-2xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
-              <span>Attention Required</span>
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl font-black text-amber-700">
-              {flaggedCount} <span className="text-sm font-bold text-slate-500">{flaggedCount === 1 ? 'Officer Flagged' : 'Officers Flagged'}</span>
-            </div>
-            <div className="text-xs text-amber-800 font-medium mt-1">
-              Automated low-score & inactivity checks
-            </div>
-          </div>
-        </div>
-
-        {/* The 3 Officers Squad Monitoring Table */}
-        <div className="bg-white rounded-2xl border border-[#ebdcc8] overflow-hidden shadow-2xs">
-          <div className="p-5 bg-[#faf5ec] border-b border-[#ebdcc8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-black text-slate-900 flex items-center">
-                <Users className="w-4 h-4 mr-2 text-[#ea8b21]" />
-                Assigned Squad Cadre Officers ({currentSquad.officers.length})
-              </h3>
-              <p className="text-xs text-slate-600 font-medium">
-                Inspect scores, view automated status checks, email directly, or deactivate accounts.
-              </p>
-            </div>
-            <div className="text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-xl border border-[#ebdcc8] self-start sm:self-auto shadow-2xs">
-              Survey Domain: <strong className="text-[#ea8b21]">{currentSquad.fieldName.split('(')[0]}</strong>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-800">
-              <thead className="bg-[#faf5ec]/80 uppercase text-[11px] text-slate-600 font-bold tracking-wider border-b border-[#ebdcc8]">
-                <tr>
-                  <th scope="col" className="py-3 px-4 font-bold">Officer & Cadre</th>
-                  <th scope="col" className="py-3 px-4 font-bold">Status (Point 1)</th>
-                  <th scope="col" className="py-3 px-4 font-bold">Score & Progress (Point 2)</th>
-                  <th scope="col" className="py-3 px-4 font-bold">Automated Verification (Point 3)</th>
-                  <th scope="col" className="py-3 px-4 font-bold">Direct Email (Point 5)</th>
-                  <th scope="col" className="py-3 px-4 font-bold text-right">Account Control (Point 7)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#ebdcc8]/70">
-                {currentSquad.officers.map((officer) => (
-                  <tr 
-                    key={officer.id}
-                    className={`transition ${officer.isDeactivated ? 'bg-slate-50 opacity-60' : 'hover:bg-[#faf5ec]/50'}`}
-                  >
-                    {/* Officer Identity */}
-                    <td className="py-4 px-4">
-                      <div className="font-bold text-slate-900 text-sm flex items-center">
-                        {officer.name}
-                        {officer.isDeactivated && (
-                          <span className="ml-2 text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.2 rounded font-bold">
-                            Deactivated
+              {pendingApprovals.length === 0 ? (
+                <div className="bg-white border border-[#ebdcc8] rounded-2xl p-10 text-center shadow-2xs space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-black text-slate-900">No Pending Approvals</h4>
+                  <p className="text-xs text-slate-600 max-w-md mx-auto font-medium">
+                    All submitted field officer registrations have been reviewed. New registration requests will appear here in real time.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingApprovals.map((req) => (
+                    <div key={req.id || req.email} className="bg-white border border-amber-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-black text-slate-900">{req.name}</span>
+                          <span className="text-[10px] font-mono bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-bold uppercase">
+                            Pending Activation
                           </span>
+                        </div>
+                        <div className="text-xs font-mono text-[#ea8b21] font-bold">{req.email}</div>
+                        <div className="text-xs text-slate-600 font-medium">
+                          {req.role_name} • {req.department}
+                        </div>
+                        {req.requested_at && (
+                          <div className="text-[11px] text-slate-500 font-medium">
+                            Registered: {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(req.requested_at).toLocaleDateString()}
+                          </div>
                         )}
                       </div>
-                      <div className="text-slate-500 text-[11px] font-medium mt-0.5">
-                        ID: <span className="font-mono font-bold text-slate-700">{officer.id}</span> • {officer.cadre}
-                      </div>
-                      <div className="text-slate-600 text-[11px] font-semibold mt-0.5">
-                        {officer.domain}
-                      </div>
-                    </td>
 
-                    {/* Point 1: Status Badges */}
-                    <td className="py-4 px-4">
-                      {officer.isDeactivated ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-300">
-                          ⚪ Relieved / Inactive
-                        </span>
-                      ) : officer.status === 'active' ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-                          Active Today
-                        </span>
-                      ) : officer.status === 'low_score' ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
-                          <AlertTriangle className="w-3 h-3 mr-1 text-amber-600" />
-                          Needs Review
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
-                          <Clock className="w-3 h-3 mr-1 text-rose-600" />
-                          Inactive (5+ d)
-                        </span>
-                      )}
-                      <div className="text-[11px] text-slate-500 font-medium mt-1">
-                        {officer.lastActive}
-                      </div>
-                    </td>
-
-                    {/* Point 2: Performance & Module Scores */}
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-2">
-                        <span className={`text-base font-black font-mono ${
-                          officer.score >= 70 ? 'text-emerald-700' : (officer.score > 0 ? 'text-amber-700' : 'text-slate-400')
-                        }`}>
-                          {officer.score}%
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-500">
-                          ({officer.modulesCompleted} Modules)
-                        </span>
-                      </div>
-                      <div className="w-28 bg-[#ebdcc8]/50 rounded-full h-2 mt-1 overflow-hidden">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            officer.score >= 70 ? 'bg-emerald-500' : (officer.score > 0 ? 'bg-[#ea8b21]' : 'bg-slate-300')
-                          }`}
-                          style={{ width: `${Math.max(4, officer.score)}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-[10px] text-slate-500 font-medium mt-1 truncate max-w-[160px]">
-                        Focus: {officer.weakTopic}
-                      </div>
-                    </td>
-
-                    {/* Point 3: Automated Verification */}
-                    <td className="py-4 px-4">
-                      <div className="text-[11px] leading-relaxed text-slate-700 font-medium max-w-xs bg-[#faf5ec] p-2 rounded-xl border border-[#ebdcc8]">
-                        <Info className="w-3 h-3 inline mr-1 text-[#ea8b21]" />
-                        {officer.verificationNote}
-                      </div>
-                    </td>
-
-                    {/* Point 5: Direct Email (Main Site Style) */}
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-1.5">
-                        <a
-                          href={`mailto:${officer.email}?subject=${encodeURIComponent(`[MoSPI Field Notice] Attention: ${currentSquad.squadName}`)}&body=${encodeURIComponent(`Dear ${officer.name},\n\nThis is an official communication from Supervisor ${currentSquad.supervisor} regarding your field activity.\n\nBest regards,\nMoSPI Field Operations`)}`}
-                          className="inline-flex items-center text-xs font-bold text-[#ea8b21] hover:text-[#d97d16] bg-[#ea8b21]/10 hover:bg-[#ea8b21]/20 px-2.5 py-1 rounded-xl border border-[#ea8b21]/30 transition"
-                          title="Open in Email Client (Outlook / Webmail)"
-                        >
-                          <Mail className="w-3 h-3 mr-1" />
-                          Mail
-                        </a>
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                         <button
-                          onClick={() => setEmailModalOfficer(officer)}
-                          className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 px-2 py-1 rounded-xl border border-[#ebdcc8] transition shadow-2xs cursor-pointer"
-                          title="View Details & Copy Contact"
+                          type="button"
+                          disabled={approvalActionLoading[req.email]}
+                          onClick={() => handleApproveOfficer(req.email, req.name, 'approve')}
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
-                          Details
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Approve & Activate</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approvalActionLoading[req.email]}
+                          onClick={() => handleApproveOfficer(req.email, req.name, 'reject')}
+                          className="px-4 py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                        >
+                          Decline
                         </button>
                       </div>
-                      <div className="font-mono text-[11px] text-slate-500 font-medium mt-1 select-all">
-                        {officer.email}
-                      </div>
-                    </td>
-
-                    {/* Point 7: Instant Deactivate Button Right on the Row */}
-                    <td className="py-4 px-4 text-right">
-                      {officer.isDeactivated ? (
-                        <button
-                          onClick={() => handleToggleDeactivate(officer.id)}
-                          className="inline-flex items-center text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition cursor-pointer"
-                        >
-                          <UserCheck className="w-3.5 h-3.5 mr-1" />
-                          Reactivate
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleToggleDeactivate(officer.id)}
-                          className="inline-flex items-center text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition shadow-2xs cursor-pointer"
-                        >
-                          <UserX className="w-3.5 h-3.5 mr-1" />
-                          Deactivate
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Supervisor Standard Operating Procedure Note */}
-        <div className="bg-[#faf5ec] rounded-2xl border border-[#ebdcc8] p-4 text-xs text-slate-700 flex items-start space-x-3">
-          <ShieldCheck className="w-5 h-5 text-[#ea8b21] shrink-0 mt-0.5" />
-          <div>
-            <span className="font-bold text-slate-900">MoSPI Field Supervisory Guidelines (Collection of Statistics Act):</span>
-            <p className="mt-0.5 leading-relaxed font-medium">
-              Supervisors must scrutinize at least 10% of field schedules. Officers with scores under 70% must be coached before survey deployment. Deactivation revokes digital tablet keys while preserving historical survey audit logs.
-            </p>
-          </div>
-        </div>
-
-      </main>
-
-      {/* Point 5 Modal: Direct Email Outreach Details (Karmayogi Bharat Modal) */}
-      {emailModalOfficer && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#ebdcc8] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-[#ebdcc8] pb-3">
-              <div className="flex items-center space-x-2">
-                <Mail className="w-5 h-5 text-[#ea8b21]" />
-                <h3 className="font-black text-slate-900 text-base">Direct Official Contact</h3>
-              </div>
-              <button 
-                onClick={() => setEmailModalOfficer(null)}
-                className="text-slate-500 hover:text-slate-900 text-xs px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold"
-              >
-                ✕ Close
-              </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="space-y-3 text-xs">
-              <div className="bg-[#faf5ec] p-3.5 rounded-2xl border border-[#ebdcc8]">
-                <div className="text-slate-500 font-bold">Recipient Officer:</div>
-                <div className="text-slate-900 font-black text-sm mt-0.5">
-                  {emailModalOfficer.name} ({emailModalOfficer.cadre})
+          {/* ===================================================================
+              TAB 3: FIELD SQUAD SCRUTINY (ROSTER TABLE - NO MAIL BUTTONS)
+              =================================================================== */}
+          {activeTab === 'squad' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              
+              {/* Filter Ribbon */}
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#ea8b21]" />
+                    <span>Assigned Squad Cadre Officers ({currentSquad.officers.length})</span>
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Inspect competencies, review automated checks, and manage cadre authorization status.
+                  </p>
                 </div>
-                <div className="text-slate-600 font-mono mt-1 select-all text-xs font-semibold">
-                  {emailModalOfficer.email}
-                </div>
-                <div className="text-slate-600 font-mono mt-0.5 select-all text-xs font-semibold">
-                  Phone: {emailModalOfficer.phone}
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 bg-[#faf5ec] p-1 rounded-xl border border-[#ebdcc8] text-xs font-bold self-start sm:self-auto">
+                  <button
+                    onClick={() => setSquadFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                      squadFilter === 'all' ? 'bg-[#ea8b21] text-white shadow-xs' : 'text-slate-700 hover:text-slate-950'
+                    }`}
+                  >
+                    All ({currentSquad.officers.length})
+                  </button>
+                  <button
+                    onClick={() => setSquadFilter('active')}
+                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                      squadFilter === 'active' ? 'bg-[#ea8b21] text-white shadow-xs' : 'text-slate-700 hover:text-slate-950'
+                    }`}
+                  >
+                    Active ({activeCount})
+                  </button>
+                  <button
+                    onClick={() => setSquadFilter('flagged')}
+                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                      squadFilter === 'flagged' ? 'bg-[#ea8b21] text-white shadow-xs' : 'text-slate-700 hover:text-slate-950'
+                    }`}
+                  >
+                    Flagged ({flaggedCount})
+                  </button>
+                  {deactivatedCount > 0 && (
+                    <button
+                      onClick={() => setSquadFilter('deactivated')}
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                        squadFilter === 'deactivated' ? 'bg-[#ea8b21] text-white shadow-xs' : 'text-slate-700 hover:text-slate-950'
+                      }`}
+                    >
+                      Relieved ({deactivatedCount})
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">Pre-Composed Subject:</label>
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={`[MoSPI Field Notice] Inquiry from Supervisor ${currentSquad.supervisor} - ${currentSquad.squadName}`}
-                  className="w-full bg-[#faf5ec]/50 border border-[#ebdcc8] text-slate-800 px-3 py-2 rounded-xl text-xs font-mono select-all"
-                />
+              {/* Roster Table (NO Mail buttons, NO email modals) */}
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] overflow-hidden shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-800">
+                    <thead className="bg-[#faf5ec]/80 uppercase text-[11px] text-slate-600 font-bold tracking-wider border-b border-[#ebdcc8]">
+                      <tr>
+                        <th scope="col" className="py-3 px-4 font-bold">Officer & Cadre</th>
+                        <th scope="col" className="py-3 px-4 font-bold">Attendance & Activity</th>
+                        <th scope="col" className="py-3 px-4 font-bold">Score & Progress</th>
+                        <th scope="col" className="py-3 px-4 font-bold">Automated Verification</th>
+                        <th scope="col" className="py-3 px-4 font-bold text-right">Account Control</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#ebdcc8]/70">
+                      {filteredOfficers.map((officer) => (
+                        <tr 
+                          key={officer.id}
+                          className={`transition ${officer.isDeactivated ? 'bg-slate-50 opacity-60' : 'hover:bg-[#faf5ec]/50'}`}
+                        >
+                          {/* Officer Identity */}
+                          <td className="py-4 px-4">
+                            <div className="font-bold text-slate-900 text-sm flex items-center">
+                              {officer.name}
+                              {officer.isDeactivated && (
+                                <span className="ml-2 text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.2 rounded font-bold">
+                                  Deactivated
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-slate-500 text-[11px] font-medium mt-0.5">
+                              ID: <span className="font-mono font-bold text-slate-700">{officer.id}</span> • {officer.cadre}
+                            </div>
+                            <div className="text-slate-600 text-[11px] font-semibold mt-0.5">
+                              {officer.domain}
+                            </div>
+                            <div className="text-slate-400 font-mono text-[10px] mt-0.5">
+                              {officer.email}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-4">
+                            {officer.isDeactivated ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                                ⚪ Relieved / Inactive
+                              </span>
+                            ) : officer.status === 'active' ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                                Active Today
+                              </span>
+                            ) : officer.status === 'low_score' ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                                <AlertTriangle className="w-3 h-3 mr-1 text-amber-600" />
+                                Needs Review
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                                <Clock className="w-3 h-3 mr-1 text-rose-600" />
+                                Inactive (5+ d)
+                              </span>
+                            )}
+                            <div className="text-[11px] text-slate-500 font-medium mt-1">
+                              {officer.lastActive}
+                            </div>
+                          </td>
+
+                          {/* Score & Progress */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-base font-black font-mono ${
+                                officer.score >= 70 ? 'text-emerald-700' : (officer.score > 0 ? 'text-amber-700' : 'text-slate-400')
+                              }`}>
+                                {officer.score}%
+                              </span>
+                              <span className="text-[11px] font-bold text-slate-500">
+                                ({officer.modulesCompleted} Modules)
+                              </span>
+                            </div>
+                            <div className="w-28 bg-[#ebdcc8]/50 rounded-full h-2 mt-1 overflow-hidden">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  officer.score >= 70 ? 'bg-emerald-500' : (officer.score > 0 ? 'bg-[#ea8b21]' : 'bg-slate-300')
+                                }`}
+                                style={{ width: `${Math.max(4, officer.score)}%` }}
+                              ></div>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-medium mt-1 truncate max-w-[180px]">
+                              Focus: {officer.weakTopic}
+                            </div>
+                          </td>
+
+                          {/* Automated Verification */}
+                          <td className="py-4 px-4">
+                            <div className="text-[11px] leading-relaxed text-slate-700 font-medium max-w-xs bg-[#faf5ec] p-2 rounded-xl border border-[#ebdcc8]">
+                              <Info className="w-3 h-3 inline mr-1 text-[#ea8b21]" />
+                              {officer.verificationNote}
+                            </div>
+                          </td>
+
+                          {/* Instant Relieve / Reactivate Button (Point 7) */}
+                          <td className="py-4 px-4 text-right">
+                            {officer.isDeactivated ? (
+                              <button
+                                onClick={() => handleToggleDeactivate(officer.id)}
+                                className="inline-flex items-center text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition cursor-pointer"
+                              >
+                                <UserCheck className="w-3.5 h-3.5 mr-1" />
+                                Reactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleDeactivate(officer.id)}
+                                className="inline-flex items-center text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition shadow-2xs cursor-pointer"
+                              >
+                                <UserX className="w-3.5 h-3.5 mr-1" />
+                                Relieve / Deactivate
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">Recommended Notice Body:</label>
-                <textarea 
-                  readOnly 
-                  rows={4}
-                  value={`Dear ${emailModalOfficer.name},\n\nThis is an official administrative communication regarding your field survey activity in ${currentSquad.fieldName}.\n\nCurrent Status: ${emailModalOfficer.verificationNote}\nPlease respond or report to your squad supervisor.\n\nBest regards,\n${currentSquad.supervisor}`}
-                  className="w-full bg-[#faf5ec]/50 border border-[#ebdcc8] text-slate-800 p-3 rounded-xl text-xs font-mono select-all leading-relaxed"
-                />
+            </div>
+          )}
+
+          {/* ===================================================================
+              TAB 4: DIAGNOSTIC ANALYTICS & REMEDIAL COACHING
+              =================================================================== */}
+          {activeTab === 'competency' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <Compass className="w-5 h-5 text-[#ea8b21]" />
+                    <span>Squad Diagnostic Analytics & Competency Radar</span>
+                  </h3>
+                  <span className="text-xs font-bold px-3 py-1 bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 rounded-xl">
+                    {currentSquad.fieldName.split('(')[0]}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Continuous skill gap telemetry derived from daily CAPI checks, survey schedules, and diagnostic tests.
+                </p>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-[#ebdcc8]">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`${emailModalOfficer.email}\nSubject: [MoSPI Field Notice] Inquiry from Supervisor ${currentSquad.supervisor}\n\nDear ${emailModalOfficer.name},\nPlease report regarding your field activity.`);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2500);
-                }}
-                className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-[#faf5ec] hover:bg-slate-100 px-3.5 py-2 rounded-xl border border-[#ebdcc8] transition flex items-center cursor-pointer"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                {copied ? 'Copied to Clipboard' : 'Copy Template'}
-              </button>
+              {/* Weak Topic Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-2">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Primary Competency Flag</span>
+                  <h4 className="text-base font-black text-slate-900">Enterprise Accounting & Turnover</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Flagged in 33% of field schedules. Officers demonstrate inconsistency in deducting intermediate consumption from gross output.
+                  </p>
+                  <div className="pt-2">
+                    <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                      Coaching Prescribed
+                    </span>
+                  </div>
+                </div>
 
-              <a
-                href={`mailto:${emailModalOfficer.email}?subject=${encodeURIComponent(`[MoSPI Notice] Inquiry: ${currentSquad.squadName}`)}`}
-                className="text-xs font-bold text-white bg-[#ea8b21] hover:bg-[#d97d16] px-4 py-2 rounded-xl transition shadow-md shadow-[#ea8b21]/20 flex items-center cursor-pointer"
-              >
-                <Mail className="w-3.5 h-3.5 mr-1.5" />
-                Launch Webmail
-              </a>
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-2">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Secondary Competency Flag</span>
+                  <h4 className="text-base font-black text-slate-900">Urban Frame Survey (UFS) Maps</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Flagged in rural/urban periphery wards. Difficulty matching satellite enumeration maps to on-ground hamlet structures.
+                  </p>
+                  <div className="pt-2">
+                    <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                      Field Re-demonstration Needed
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-2">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Compliance Benchmark</span>
+                  <h4 className="text-base font-black text-slate-900">Passing Threshold: 70.0%</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Current Squad Competency Index stands at <strong className="text-slate-900 font-bold">{avgScore}%</strong>. Field deployment permitted for officers meeting or exceeding 70%.
+                  </p>
+                  <div className="pt-2">
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      {avgScore >= 70 ? 'Benchmark Satisfied' : 'Remediation Required'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recommended iGOT Karmayogi Modules */}
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 shadow-2xs space-y-4">
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#ea8b21]" />
+                  <span>Assigned iGOT Karmayogi Coaching Directives for Squad</span>
+                </h4>
+
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-[#faf5ec]/60 border border-[#ebdcc8] rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-xs text-slate-900">ASUSE 2026: Enterprise Balance Sheet Verification</div>
+                      <div className="text-[11px] text-slate-600 font-medium">Covers GVA calculations, gross receipts, and intermediate input reconciliations.</div>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#ea8b21] bg-white px-2.5 py-1 rounded-lg border border-[#ebdcc8]">
+                      iGOT-ASUSE-04
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-[#faf5ec]/60 border border-[#ebdcc8] rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-xs text-slate-900">NSSO Sampling & Non-Response Protocols (PLFS 2026)</div>
+                      <div className="text-[11px] text-slate-600 font-medium">Standard procedures for household substitution, lockouts, and reluctant informants.</div>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#ea8b21] bg-white px-2.5 py-1 rounded-lg border border-[#ebdcc8]">
+                      iGOT-PLFS-02
+                    </span>
+                  </div>
+                </div>
+              </div>
+
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* ===================================================================
+              TAB 5: SCRUTINY DIRECTIVES & COMPLIANCE AUDIT
+              =================================================================== */}
+          {activeTab === 'compliance' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs space-y-2">
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-[#ea8b21]" />
+                  <span>MoSPI Statutory Scrutiny & Operational Directives</span>
+                </h3>
+                <p className="text-xs text-slate-600 font-medium">
+                  Collection of Statistics Act statutory duties for Senior Statistical Officers and Field Cadre Supervisors.
+                </p>
+              </div>
+
+              {/* Statutory Checklist Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Mandatory 10% Scrutiny Audit</span>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Supervisors are statutorily required to spot-verify at least 10% of total schedules completed by each Field Investigator before final submission to NSSO Data Processing Division (DPD).
+                  </p>
+                  <div className="text-xs font-mono text-slate-500 bg-[#faf5ec] p-2.5 rounded-xl border border-[#ebdcc8]">
+                    Status: Verified for Current Survey Cycle
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Data Confidentiality & Legal Immunity</span>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Under Section 9 of the Collection of Statistics Act, individual informant records are strictly confidential and inadmissible as evidence in court or taxation proceedings.
+                  </p>
+                  <div className="text-xs font-mono text-slate-500 bg-[#faf5ec] p-2.5 rounded-xl border border-[#ebdcc8]">
+                    Protocol: MoSPI Encryption Key Enforced
+                  </div>
+                </div>
+              </div>
+
+              {/* Roll-Call Audit Log */}
+              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 shadow-2xs space-y-3">
+                <h4 className="text-sm font-black text-slate-900">Daily Supervisory Roll-Call Audit Trail</h4>
+                <div className="space-y-2 text-xs font-mono">
+                  <div className="p-3 bg-[#faf5ec] rounded-xl border border-[#ebdcc8] flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-800">{currentSquad.squadName}</span>
+                      <span className="text-slate-500 ml-2">({currentSquad.supervisorBadge})</span>
+                    </div>
+                    <span className="font-bold text-emerald-700">
+                      {currentSquad.submittedAt || 'Pending Today'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+        </main>
+
+      </div>
+
     </div>
   );
 }
