@@ -627,18 +627,25 @@ def reset_officer_password_with_otp(email, new_password):
             if cur is None:
                 return {"success": False, "error": "Database unavailable."}
 
-            cur.execute("""
-                SELECT id, email, auth_provider, password
-                FROM officers
-                WHERE email = %s;
-            """, (email,))
+            found_table = None
+            found_row = None
+            for tbl in ["officers", "supervisors", "directorate_cadres"]:
+                cur.execute(f"""
+                    SELECT id, email, auth_provider, password
+                    FROM {tbl}
+                    WHERE email = %s;
+                """, (email,))
+                row = cur.fetchone()
+                if row:
+                    found_table = tbl
+                    found_row = row
+                    break
 
-            row = cur.fetchone()
-            if not row:
-                return {"success": False, "error": "Officer account not found."}
+            if not found_row:
+                return {"success": False, "error": "Account not found in officer, supervisor, or directorate records."}
 
-            auth_provider = (row[2] or "").lower()
-            db_password = row[3] or ""
+            auth_provider = (found_row[2] or "").lower()
+            db_password = found_row[3] or ""
             if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED" or db_password.startswith("GOOGLE_"):
                 return {
                     "success": False,
@@ -647,8 +654,8 @@ def reset_officer_password_with_otp(email, new_password):
 
             # Hash new password with salted scrypt and update in Neon PostgreSQL
             new_hash = generate_password_hash(new_password)
-            cur.execute("""
-                UPDATE officers
+            cur.execute(f"""
+                UPDATE {found_table}
                 SET password = %s, last_active = CURRENT_TIMESTAMP
                 WHERE email = %s;
             """, (new_hash, email))

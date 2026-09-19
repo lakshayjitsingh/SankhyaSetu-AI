@@ -443,13 +443,25 @@ def auth_forgot_password_send_otp():
             if cur is None:
                 return jsonify({"success": False, "error": "Database unavailable."}), 500
 
-            cur.execute("SELECT id, name, auth_provider, password FROM officers WHERE email = %s;", (email,))
-            row = cur.fetchone()
-            if not row:
-                return jsonify({"success": False, "error": "No MoSPI officer account found with this email. Please check your email or sign up."}), 404
+            found_user = None
+            for tbl in ["officers", "supervisors", "directorate_cadres"]:
+                cur.execute(f"SELECT id, name, auth_provider, password FROM {tbl} WHERE email = %s;", (email,))
+                row = cur.fetchone()
+                if row:
+                    found_user = {
+                        "table": tbl,
+                        "id": row[0],
+                        "name": row[1],
+                        "auth_provider": (row[2] or "").lower(),
+                        "password": row[3] or ""
+                    }
+                    break
 
-            auth_provider = (row[2] or "").lower()
-            db_password = row[3] or ""
+            if not found_user:
+                return jsonify({"success": False, "error": "No account found with this email across officer, supervisor, or directorate cadres. Please check your email or sign up."}), 404
+
+            auth_provider = found_user["auth_provider"]
+            db_password = found_user["password"]
             if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED" or db_password.startswith("GOOGLE_"):
                 return jsonify({
                     "success": False,

@@ -309,6 +309,7 @@ export default function App() {
 
   // Forgot Password Modal States (Option B - Smart OTP Account Recovery)
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotCadre, setForgotCadre] = useState('officer'); // 'officer' | 'supervisor' | 'boss'
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPass, setForgotNewPass] = useState('');
@@ -1589,6 +1590,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => {
+                            setForgotCadre('officer');
                             setForgotEmail(directEmail);
                             setForgotStep('enter_email');
                             setForgotError('');
@@ -1740,6 +1742,22 @@ export default function App() {
                       <label className="text-[11px] font-bold text-slate-900 block">
                         {isSupervisorSignUp ? "Password (min. 6 chars)" : "Password"}
                       </label>
+                      {!isSupervisorSignUp && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForgotCadre('supervisor');
+                            setForgotEmail(supervisorEmail);
+                            setForgotStep('enter_email');
+                            setForgotError('');
+                            setForgotSuccess('');
+                            setShowForgotPasswordModal(true);
+                          }}
+                          className="text-[10px] font-bold text-[#ea8b21] hover:text-[#d97d16] hover:underline cursor-pointer"
+                        >
+                          Forgot?
+                        </button>
+                      )}
                     </div>
                     <div className="relative">
                       <input
@@ -1878,6 +1896,20 @@ export default function App() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[11px] font-bold text-slate-900 block">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotCadre('boss');
+                          setForgotEmail(bossEmail);
+                          setForgotStep('enter_email');
+                          setForgotError('');
+                          setForgotSuccess('');
+                          setShowForgotPasswordModal(true);
+                        }}
+                        className="text-[10px] font-bold text-[#ea8b21] hover:text-[#d97d16] hover:underline cursor-pointer"
+                      >
+                        Forgot?
+                      </button>
                     </div>
                     <div className="relative">
                       <input
@@ -1912,6 +1944,28 @@ export default function App() {
                     {isBossAuthenticating ? "Accessing Directorate HQ..." : "Sign In to Directorate HQ"}
                   </button>
                 </form>
+
+                {/* Divider */}
+                <div className="relative my-2 flex items-center justify-center">
+                  <div className="w-full border-t border-[#ebdcc8]"></div>
+                  <span className="absolute bg-white px-2.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                    demo key
+                  </span>
+                </div>
+
+                {/* 1-Click Demo Key Helper */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBossEmail('boss@gmail.com');
+                    setBossPassword('123456');
+                    if (bossAuthError) setBossAuthError('');
+                  }}
+                  className="w-full py-2 px-3 bg-[#faf5ec] hover:bg-[#f3eadc] border border-[#ebdcc8] rounded-xl text-[10.5px] font-bold text-[#ea8b21] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Key className="w-3.5 h-3.5 shrink-0" />
+                  <span>Auto-Fill Demo Key (boss@gmail.com / 123456)</span>
+                </button>
               </div>
 
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
@@ -1970,15 +2024,15 @@ export default function App() {
                 <form onSubmit={handleSendForgotOtp} className="space-y-4">
                   <div className="p-3.5 bg-[#faf5ec] border border-[#ebdcc8] rounded-2xl text-xs text-slate-900 leading-relaxed">
                     <span className="font-bold block mb-1">Government Identity Verification</span>
-                    Enter the email address associated with your MoSPI officer cadre account. A 6-digit verification code will be generated to authenticate your recovery request.
+                    Enter the email address associated with your MoSPI account (Field Officer, Supervisor, or Directorate). A 6-digit verification code will be generated to authenticate your recovery request.
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-900 block mb-1">Registered Officer Email</label>
+                    <label className="text-xs font-bold text-slate-900 block mb-1">Registered Account Email</label>
                     <input
                       type="email"
                       required
-                      placeholder="officer@mospi.gov.in"
+                      placeholder="user@mospi.gov.in"
                       value={forgotEmail}
                       onChange={(e) => {
                         setForgotEmail(e.target.value);
@@ -2167,9 +2221,18 @@ export default function App() {
                     onClick={() => {
                       const emailToKeep = forgotEmail;
                       closeForgotPasswordModal();
-                      setDirectEmail(emailToKeep);
-                      setDirectPassword('');
-                      setIsSignUp(false);
+                      if (forgotCadre === 'supervisor') {
+                        setSupervisorEmail(emailToKeep);
+                        setSupervisorPassword('');
+                        setIsSupervisorSignUp(false);
+                      } else if (forgotCadre === 'boss') {
+                        setBossEmail(emailToKeep);
+                        setBossPassword('');
+                      } else {
+                        setDirectEmail(emailToKeep);
+                        setDirectPassword('');
+                        setIsSignUp(false);
+                      }
                     }}
                     className="w-full py-3 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/20 cursor-pointer"
                   >
