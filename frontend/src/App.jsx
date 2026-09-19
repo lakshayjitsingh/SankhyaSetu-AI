@@ -979,14 +979,14 @@ export default function App() {
                     MoSPI
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-medium truncate">Karmayogi Bharat Ecosystem</p>
+                <p className="text-xs text-slate-900 font-semibold truncate">Karmayogi Bharat Ecosystem</p>
               </div>
             </div>
 
             {/* Dedicated Mobile Drawer Close (X) Button */}
             <button
               onClick={() => setMobileSidebarOpen(false)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-[#eee3d3] rounded-xl transition-all md:hidden cursor-pointer shrink-0"
+              className="p-1.5 text-slate-700 hover:text-slate-900 hover:bg-[#eee3d3] rounded-xl transition-all md:hidden cursor-pointer shrink-0"
               title="Close Menu"
               aria-label="Close navigation menu"
             >
@@ -1003,10 +1003,10 @@ export default function App() {
               className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
                 activeTab === 'home'
                   ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-[#eee3d3]/80'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
-              <Home className={`w-5 h-5 shrink-0 ${activeTab === 'home' ? 'text-white' : 'text-slate-600'}`} />
+              <Home className={`w-5 h-5 shrink-0 ${activeTab === 'home' ? 'text-white' : 'text-slate-800'}`} />
               <span className="tracking-tight">Home Hub</span>
             </button>
 
@@ -1020,10 +1020,10 @@ export default function App() {
               className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
                 activeTab === 'diagnostic'
                   ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-[#eee3d3]/80'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
-              <Compass className={`w-5 h-5 shrink-0 ${activeTab === 'diagnostic' ? 'text-white' : 'text-slate-600'}`} />
+              <Compass className={`w-5 h-5 shrink-0 ${activeTab === 'diagnostic' ? 'text-white' : 'text-slate-800'}`} />
               <span className="tracking-tight">Skill Gap Diagnostic</span>
             </button>
 
@@ -1037,10 +1037,10 @@ export default function App() {
               className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
                 activeTab === 'upload_quiz'
                   ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-[#eee3d3]/80'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
-              <Upload className={`w-5 h-5 shrink-0 ${activeTab === 'upload_quiz' ? 'text-white' : 'text-slate-600'}`} />
+              <Upload className={`w-5 h-5 shrink-0 ${activeTab === 'upload_quiz' ? 'text-white' : 'text-slate-800'}`} />
               <span className="tracking-tight">Upload Manual & Quiz</span>
             </button>
 
@@ -1050,11 +1050,11 @@ export default function App() {
               className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
                 activeTab === 'dashboard'
                   ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-[#eee3d3]/80'
+                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
               <div className="flex items-center gap-3.5">
-                <BarChart3 className={`w-5 h-5 shrink-0 ${activeTab === 'dashboard' ? 'text-white' : 'text-slate-600'}`} />
+                <BarChart3 className={`w-5 h-5 shrink-0 ${activeTab === 'dashboard' ? 'text-white' : 'text-slate-800'}`} />
                 <span className="tracking-tight">Officer Dashboard</span>
               </div>
               {userHistory.length > 0 && (
@@ -1088,7 +1088,7 @@ export default function App() {
             <button
               onClick={handleLogout}
               title="Sign Out"
-              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
+              className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -1115,14 +1115,14 @@ export default function App() {
           <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => setMobileSidebarOpen(true)}
-              className="p-1.5 hover:bg-slate-100 rounded-lg md:hidden text-slate-600 cursor-pointer"
+              className="p-1.5 hover:bg-slate-100 rounded-lg md:hidden text-slate-800 cursor-pointer"
               title="Open Menu"
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
-              <span className="font-semibold text-slate-800">MoSPI Platform</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-slate-900 font-bold">
+              <span className="font-bold text-slate-900">MoSPI Platform</span>
               <span>/</span>
               <span className="capitalize font-bold text-[#ea8b21]">
                 {activeTab.replace('_', ' ')}
@@ -1437,7 +1437,7 @@ export default function App() {
                 <span className="text-xs font-bold text-[#ea8b21] px-3 py-1 bg-[#ea8b21]/15 border border-[#ea8b21]/30 rounded-full">
                   Assessing Domain: {activeFieldDetails.designation}
                 </span>
-                <span className="text-xs font-medium text-slate-500">
+                <span className="text-xs font-bold text-slate-900">
                   FRAC Competency Framework
                 </span>
               </div>
@@ -1448,8 +1448,8 @@ export default function App() {
                     <RefreshCw className="w-7 h-7 animate-spin text-[#ea8b21]" />
                   </div>
                   <h3 className="font-extrabold text-lg text-slate-900">Gemini AI Generating 10 Dynamic Diagnostic Scenarios...</h3>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                    Synthesizing 2 real-world Indian field scenarios for each of the 5 official MoSPI competencies for <span className="font-bold text-slate-700">{activeFieldDetails.title}</span>.
+                  <p className="text-xs text-slate-900 font-medium max-w-md mx-auto leading-relaxed">
+                    Synthesizing 2 real-world Indian field scenarios for each of the 5 official MoSPI competencies for <span className="font-bold text-slate-900">{activeFieldDetails.title}</span>.
                   </p>
                 </div>
               )}
@@ -1462,11 +1462,11 @@ export default function App() {
                         <span className="text-xs font-bold text-[#ea8b21] uppercase tracking-wider">
                           FRAC Competency Assessment
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-emerald-600" /> 10 Questions • Powered by Gemini Flash
                         </span>
                         {diagnosticLatency && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1">
                             ⚡ Ready in {diagnosticLatency}s
                           </span>
                         )}
@@ -1474,7 +1474,7 @@ export default function App() {
                       <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
                         Answer these {diagnosticQuestions.length || 10} questions to diagnose your weaker competencies
                       </h2>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-slate-900 font-medium mt-1">
                         Evaluating official MoSPI competencies for {activeFieldDetails.title}. Completely unique AI scenarios generated on every single attempt.
                       </p>
                     </div>
@@ -1510,7 +1510,7 @@ export default function App() {
                               className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                                 diagnosticAnswers[q.id] === oIdx
                                   ? 'bg-[#ea8b21]/10 border-[#ea8b21] text-slate-900 font-bold shadow-2xs'
-                                  : 'bg-white border-[#ebdcc8] text-slate-700 hover:bg-[#faf5ec]'
+                                  : 'bg-white border-[#ebdcc8] text-slate-900 font-medium hover:bg-[#faf5ec]'
                               }`}
                             >
                               <input
@@ -1529,7 +1529,7 @@ export default function App() {
                   </div>
 
                   <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <span className="text-xs font-medium text-slate-500">
+                    <span className="text-xs font-bold text-slate-900">
                       {Object.keys(diagnosticAnswers).length} of {diagnosticQuestions.length} answered
                     </span>
                     <button
@@ -1555,7 +1555,7 @@ export default function App() {
                         <h2 className="text-2xl font-black text-slate-900 mt-1">
                           Identified Competency Gaps
                         </h2>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-900 font-medium">
                           Mapped against National Framework for Roles, Activities and Competencies (FRAC).
                         </p>
                       </div>
@@ -1574,15 +1574,15 @@ export default function App() {
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-[#ea8b21]" />
-                              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
                                 FRAC Competency Radar Map
                               </h4>
                             </div>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[11px] text-slate-900 font-medium">
                               Visual gap analysis against official MoSPI benchmark standards
                             </p>
                           </div>
-                          <span className="text-[10px] font-bold px-3 py-1 bg-white border border-[#ebdcc8] rounded-full text-slate-700 shadow-2xs">
+                          <span className="text-[10px] font-bold px-3 py-1 bg-white border border-[#ebdcc8] rounded-full text-slate-900 shadow-2xs">
                             Cadre Benchmark: Level 3
                           </span>
                         </div>
@@ -1695,11 +1695,11 @@ export default function App() {
                         <div className="pt-3 border-t border-[#ebdcc8]/80 flex flex-wrap items-center justify-center gap-6 text-xs">
                           <div className="flex items-center gap-2">
                             <span className="w-3.5 h-3.5 rounded-md bg-[#ea8b21] border border-[#ea8b21] shadow-2xs" />
-                            <span className="font-bold text-slate-800">Your Competency Score</span>
+                            <span className="font-bold text-slate-900">Your Competency Score</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="w-3.5 h-3.5 rounded-md bg-blue-50 border-2 border-dashed border-blue-500" />
-                            <span className="font-semibold text-slate-600">MoSPI Benchmark Target</span>
+                            <span className="font-bold text-slate-900">MoSPI Benchmark Target</span>
                           </div>
                         </div>
                       </div>
@@ -1707,10 +1707,10 @@ export default function App() {
                       {/* Scorecard Column with Dual-Track Target Needles */}
                       <div className="lg:col-span-5 space-y-3">
                         <div className="flex items-center justify-between pb-1">
-                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
                             Competency Scorecard
                           </h4>
-                          <span className="text-[11px] font-bold text-slate-500">
+                          <span className="text-[11px] font-bold text-slate-900">
                             {diagnosticResult.competency_scores.filter(c => !c.is_gap).length} of {diagnosticResult.competency_scores.length} Proficient
                           </span>
                         </div>
@@ -1722,11 +1722,11 @@ export default function App() {
                                 <div>
                                   <p className="font-extrabold text-slate-900 leading-snug">{comp.name}</p>
                                   <div className="flex items-center gap-3 mt-1 text-[11px]">
-                                    <span className="text-slate-500">
+                                    <span className="text-slate-900 font-medium">
                                       Target: <span className="font-bold text-blue-600">{comp.required_level}%</span>
                                     </span>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="text-slate-500">
+                                    <span className="text-slate-400 font-bold">•</span>
+                                    <span className="text-slate-900 font-medium">
                                       You: <span className={`font-black ${comp.score >= comp.required_level ? 'text-emerald-700' : 'text-[#ea8b21]'}`}>{comp.score}%</span>
                                     </span>
                                   </div>
@@ -1756,7 +1756,7 @@ export default function App() {
                                     style={{ width: `${Math.min(100, comp.score)}%` }}
                                   />
                                 </div>
-                                <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 px-0.5">
+                                <div className="flex items-center justify-between text-[9px] font-bold text-slate-900 px-0.5">
                                   <span>0%</span>
                                   <span className="text-blue-600 font-semibold">Target {comp.required_level}%</span>
                                   <span>100%</span>
@@ -1781,7 +1781,7 @@ export default function App() {
                                 {c.duration} • {c.provider}
                               </span>
                               <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">{c.title}</h4>
-                              <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{c.summary}</p>
+                              <p className="text-xs text-slate-900 font-medium leading-relaxed line-clamp-2">{c.summary}</p>
                             </div>
 
                             <div className="pt-2 border-t border-indigo-100">
@@ -1819,7 +1819,7 @@ export default function App() {
                   <div className="flex justify-center gap-3">
                     <button
                       onClick={() => startDiagnostic(selectedField)}
-                      className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer shadow-2xs"
+                      className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 rounded-xl text-xs font-bold cursor-pointer shadow-2xs"
                     >
                       Retake Diagnostic Test
                     </button>
@@ -1846,7 +1846,7 @@ export default function App() {
                 <span className="text-xs font-bold text-[#ea8b21] px-3 py-1 bg-[#ea8b21]/15 border border-[#ea8b21]/30 rounded-full">
                   AI Question Engine & Ground Truth Citations
                 </span>
-                <span className="text-xs font-medium text-slate-500">
+                <span className="text-xs font-bold text-slate-900">
                   RAG Document Verification
                 </span>
               </div>
@@ -1864,14 +1864,14 @@ export default function App() {
                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
                     Upload Survey Guidelines or Pick an Official Manual
                   </h2>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-900 font-medium mt-1">
                     The AI reads the guidelines and generates dynamic scenario-based test questions with page-by-page source citations.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Select Official MoSPI Manual:</label>
+                    <label className="text-xs font-bold text-slate-900">Select Official MoSPI Manual:</label>
                     <select
                       value={uploadedFileName ? 'uploaded' : selectedManual}
                       onChange={(e) => {
@@ -1899,7 +1899,7 @@ export default function App() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Question Style (Bloom's Taxonomy):</label>
+                    <label className="text-xs font-bold text-slate-900">Question Style (Bloom's Taxonomy):</label>
                     <select
                       value={difficulty}
                       onChange={(e) => {
@@ -1917,7 +1917,7 @@ export default function App() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Assessment Length (Question Count):</label>
+                    <label className="text-xs font-bold text-slate-900">Assessment Length (Question Count):</label>
                     <select
                       value={quizCount}
                       onChange={(e) => {
@@ -1980,20 +1980,20 @@ export default function App() {
                   {isUploadingManual ? (
                     <div className="space-y-2">
                       <RefreshCw className="w-8 h-8 text-[#ea8b21] mx-auto animate-spin" />
-                      <p className="text-xs font-bold text-slate-800">
+                      <p className="text-xs font-bold text-slate-900">
                         Extracting Full Text from {uploadedFileName}...
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-900 font-medium">
                         Using high-speed PyMuPDF PDF parser
                       </p>
                     </div>
                   ) : (
                     <>
                       <Upload className="w-8 h-8 text-[#ea8b21] mx-auto mb-2" />
-                      <p className="text-xs font-bold text-slate-700">
+                      <p className="text-xs font-bold text-slate-900">
                         {uploadedFileName ? `Re-upload or replace: ${uploadedFileName}` : "Click or Drag & Drop to Upload Custom Manual (PDF or TXT)"}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-1">
+                      <p className="text-[11px] text-slate-900 font-medium mt-1">
                         Supports official PDF manuals, circulars, survey instruction booklets, and training notes
                       </p>
                     </>
@@ -2032,7 +2032,7 @@ export default function App() {
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <h3 className="font-extrabold text-base text-slate-900">Ready to Generate Assessment</h3>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  <p className="text-xs text-slate-900 font-medium max-w-md mx-auto leading-relaxed">
                     Select your manual and desired Bloom's taxonomy level above, then click <span className="font-bold text-[#ea8b21]">"Generate AI Quiz Questions"</span> to dynamically synthesize questions.
                   </p>
                 </div>
@@ -2093,7 +2093,7 @@ export default function App() {
                                 {isPass ? 'Passed' : 'Needs Review'}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-600 mt-1">
+                            <p className="text-xs text-slate-900 font-medium mt-1">
                               {isPass 
                                 ? "Outstanding competency! You met the official MoSPI operational standard." 
                                 : "Review the ground-truth citations below to master specific manual clauses."}
@@ -2107,7 +2107,7 @@ export default function App() {
                             setQuizAnswers({});
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
-                          className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-xl text-xs font-bold cursor-pointer transition-all self-start sm:self-auto shadow-2xs shrink-0"
+                          className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-900 rounded-xl text-xs font-bold cursor-pointer transition-all self-start sm:self-auto shadow-2xs shrink-0"
                         >
                           Retake Quiz
                         </button>
@@ -2127,7 +2127,7 @@ export default function App() {
                               {q.bloom_level}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-500 font-medium">{q.source_manual}</span>
+                          <span className="text-[11px] text-slate-900 font-bold">{q.source_manual}</span>
                         </div>
 
                         <h4 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">
@@ -2144,7 +2144,7 @@ export default function App() {
                             const isCorrectChoice = isEvaluated && oIdx === correctIdx;
                             const isWrongChoice = isEvaluated && isUserChoice && oIdx !== correctIdx;
 
-                            let optionClasses = 'bg-white border-[#ebdcc8] text-slate-700 hover:bg-[#faf5ec]';
+                            let optionClasses = 'bg-white border-[#ebdcc8] text-slate-900 font-medium hover:bg-[#faf5ec]';
                             let cursorClass = 'cursor-pointer';
 
                             if (isEvaluated) {
@@ -2154,7 +2154,7 @@ export default function App() {
                               } else if (isWrongChoice) {
                                 optionClasses = 'bg-rose-50 border-rose-400 text-rose-950 font-medium opacity-85';
                               } else {
-                                optionClasses = 'bg-slate-50 border-slate-200 text-slate-400 opacity-60';
+                                optionClasses = 'bg-slate-50 border-slate-200 text-slate-500 opacity-60';
                               }
                             } else if (isUserChoice) {
                               optionClasses = 'bg-[#ea8b21]/10 border-[#ea8b21] text-slate-950 font-bold shadow-2xs';
@@ -2220,7 +2220,7 @@ export default function App() {
                                   </span>
                                 </div>
 
-                                <p className="text-[11px] text-slate-700 leading-relaxed">
+                                <p className="text-[11px] text-slate-900 font-medium leading-relaxed">
                                   {res.explanation || 'Verified with official guidelines.'}
                                 </p>
 
@@ -2230,14 +2230,14 @@ export default function App() {
                                       <BookOpen className="w-3.5 h-3.5" />
                                       Verified Ground Truth Source Citation:
                                     </span>
-                                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 border border-slate-200 font-bold">
+                                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-900 border border-slate-300 font-bold">
                                       {citation.page || 'Page Reference'}
                                     </span>
                                   </div>
-                                  <p className="font-semibold text-slate-800">
+                                  <p className="font-bold text-slate-900">
                                     {citation.manual || q.source_manual || 'Official MoSPI Manual'} • {citation.section || 'Guideline Clause'}
                                   </p>
-                                  <p className="italic text-slate-600 text-[10px] bg-slate-50 p-2 rounded border border-slate-100">
+                                  <p className="italic text-slate-900 font-medium text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
                                     "{citation.exact_quote || res.explanation || 'Guidelines prescribe this standard methodology.'}"
                                   </p>
                                 </div>
@@ -2250,7 +2250,7 @@ export default function App() {
                   </div>
 
                   <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <span className="text-xs font-medium text-slate-500">
+                    <span className="text-xs font-bold text-slate-900">
                       {quizEvaluation ? (
                         <span className="font-bold text-emerald-700 flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -2268,9 +2268,9 @@ export default function App() {
                             setQuizAnswers({});
                             setQuizEvaluation(null);
                           }}
-                          className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                          <RefreshCw className="w-3.5 h-3.5 text-slate-700" />
                           <span>Retake Test</span>
                         </button>
 
@@ -2353,8 +2353,8 @@ export default function App() {
                     <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-0.5">
                       Officer Activity & Progress Dashboard
                     </h2>
-                    <p className="text-xs text-slate-500">
-                      Real-time assessment history, competency scores, and gap resolution logs for <strong className="text-slate-800">{user.name}</strong>.
+                    <p className="text-xs text-slate-900 font-medium">
+                      Real-time assessment history, competency scores, and gap resolution logs for <strong className="text-slate-950">{user.name}</strong>.
                     </p>
                   </div>
 
@@ -2370,7 +2370,7 @@ export default function App() {
                         setSelectedManual('manual_cpi_rural');
                         setActiveTab('upload_quiz');
                       }}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-[#faf5ec] border border-[#ebdcc8] text-slate-800 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+                      className="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-[#faf5ec] border border-[#ebdcc8] text-slate-900 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-2xs"
                     >
                       <Upload className="w-3.5 h-3.5 text-[#ea8b21]" /> Take Manual Quiz
                     </button>
@@ -2381,7 +2381,7 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Card 1: Average Score */}
                   <div className="bg-white border border-[#ebdcc8] rounded-2xl p-5 shadow-2xs space-y-1 hover:border-[#ea8b21] transition-all">
-                    <span className="text-xs font-bold text-slate-500">Average Competency Score</span>
+                    <span className="text-xs font-bold text-slate-900">Average Competency Score</span>
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-black text-slate-900">{avgScore}%</span>
                       {completedCount > 1 && (
@@ -2391,44 +2391,44 @@ export default function App() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-900 font-bold">
                       {avgScore >= 80 ? '✓ Exceeds MoSPI Benchmark (80%)' : 'MoSPI Target Level: 80% (FRAC L3)'}
                     </p>
                   </div>
 
                   {/* Card 2: Total Sessions */}
                   <div className="bg-white border border-[#ebdcc8] rounded-2xl p-5 shadow-2xs space-y-1 hover:border-[#ea8b21] transition-all">
-                    <span className="text-xs font-bold text-slate-500">Assessments Completed</span>
+                    <span className="text-xs font-bold text-slate-900">Assessments Completed</span>
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-black text-[#ea8b21]">{completedCount}</span>
-                      <span className="text-xs font-bold text-slate-500">sessions recorded</span>
+                      <span className="text-xs font-bold text-slate-900">sessions recorded</span>
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-900 font-bold">
                       {userHistory.filter(h => h.type === 'diagnostic').length} Diagnostics • {userHistory.filter(h => h.type === 'quiz').length} Quizzes
                     </p>
                   </div>
 
                   {/* Card 3: Proficiency Rate */}
                   <div className="bg-white border border-[#ebdcc8] rounded-2xl p-5 shadow-2xs space-y-1 hover:border-[#ea8b21] transition-all">
-                    <span className="text-xs font-bold text-slate-500">Karmayogi Proficiency Rate</span>
+                    <span className="text-xs font-bold text-slate-900">Karmayogi Proficiency Rate</span>
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-black text-emerald-700">{passPercentage}%</span>
-                      <span className="text-xs font-bold text-slate-500">benchmark met</span>
+                      <span className="text-xs font-bold text-slate-900">benchmark met</span>
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-900 font-bold">
                       {passedCount} of {completedCount} tests scored ≥ 75%
                     </p>
                   </div>
 
                   {/* Card 4: Assigned Working Domain */}
                   <div className="bg-white border border-[#ebdcc8] rounded-2xl p-5 shadow-2xs space-y-1 hover:border-[#ea8b21] transition-all">
-                    <span className="text-xs font-bold text-slate-500">Current Cadre Domain</span>
+                    <span className="text-xs font-bold text-slate-900">Current Cadre Domain</span>
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-black text-slate-900 truncate">
                         {activeFieldDetails.designation.split('-')[0].trim()}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate">{activeFieldDetails.division}</p>
+                    <p className="text-[11px] text-slate-900 font-bold truncate">{activeFieldDetails.division}</p>
                   </div>
                 </div>
 
@@ -2442,7 +2442,7 @@ export default function App() {
                           Competency Growth Trajectory (Actual Attempts)
                         </h3>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-900 font-medium mt-0.5">
                         Chronological score evolution updated automatically upon completing any diagnostic or quiz
                       </p>
                     </div>
@@ -2450,7 +2450,7 @@ export default function App() {
                     <span className={`text-xs font-bold px-3 py-1 rounded-full border self-start sm:self-auto ${
                       avgScore >= 80 
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                        : (growthDelta > 0 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200')
+                        : (growthDelta > 0 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-900 border-slate-300')
                     }`}>
                       {avgScore >= 80 ? '✨ Cadre Benchmark Achieved' : (growthDelta > 0 ? `📈 Positive Trajectory (+${growthDelta}%)` : '🎯 Baseline Learning Stage')}
                     </span>
@@ -2460,7 +2460,7 @@ export default function App() {
                     <div className="p-10 text-center space-y-3 bg-[#faf5ec]/50 rounded-2xl border border-dashed border-[#ebdcc8]">
                       <BarChart3 className="w-10 h-10 text-[#ea8b21] mx-auto opacity-70" />
                       <h4 className="font-extrabold text-sm text-slate-900">No Assessment Records Yet</h4>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      <p className="text-xs text-slate-900 font-medium max-w-sm mx-auto">
                         Complete your first 10-Question Skill Diagnostic or AI Document Quiz to start tracking your growth trajectory!
                       </p>
                     </div>
@@ -2530,14 +2530,14 @@ export default function App() {
                       <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
                         Official Assessment History & Audit Log
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-900 font-medium mt-0.5">
                         All completed diagnostic sessions and manual assessments saved to your officer profile
                       </p>
                     </div>
                     {completedCount > 0 && (
                       <button
                         onClick={clearHistory}
-                        className="text-[11px] font-bold text-slate-400 hover:text-rose-600 transition-all cursor-pointer"
+                        className="text-[11px] font-bold text-slate-700 hover:text-rose-600 transition-all cursor-pointer"
                         title="Clear history"
                       >
                         Reset History
@@ -2546,7 +2546,7 @@ export default function App() {
                   </div>
 
                   {completedCount === 0 ? (
-                    <p className="text-xs text-slate-500 italic text-center py-6">
+                    <p className="text-xs text-slate-900 font-medium italic text-center py-6">
                       No activity logged yet. Your completed tests will appear here chronologically.
                     </p>
                   ) : (
@@ -2568,14 +2568,14 @@ export default function App() {
                                   {item.type === 'diagnostic' ? 'Diagnostic' : 'Manual Quiz'}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                                {item.field} • <span className="text-slate-400">{item.date}</span>
+                              <p className="text-[11px] text-slate-900 mt-0.5 font-medium">
+                                {item.field} • <span className="text-slate-900 font-bold">{item.date}</span>
                               </p>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-3 self-end sm:self-center">
-                            <span className="text-[11px] font-bold text-slate-600">{item.status}</span>
+                            <span className="text-[11px] font-bold text-slate-900">{item.status}</span>
                             <span className={`px-3 py-1 font-black text-xs rounded-xl font-mono border ${
                               item.score >= 75
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -2621,7 +2621,7 @@ export default function App() {
               {user.hasCompletedOnboarding && (
                 <button
                   onClick={() => setShowFieldModal(false)}
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-slate-900 cursor-pointer"
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-800 hover:text-slate-950 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2688,7 +2688,7 @@ export default function App() {
                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 uppercase tracking-wider">
                     Official Video Training
                   </span>
-                  <span className="text-xs font-semibold text-slate-500">
+                  <span className="text-xs font-bold text-slate-900">
                     {activeVideoModal.provider || "Karmayogi Bharat & MoSPI"}
                   </span>
                 </div>
@@ -2699,7 +2699,7 @@ export default function App() {
 
               <button
                 onClick={() => setActiveVideoModal(null)}
-                className="p-2 hover:bg-[#faf5ec] rounded-xl text-slate-400 hover:text-slate-800 cursor-pointer transition-colors"
+                className="p-2 hover:bg-[#faf5ec] rounded-xl text-slate-700 hover:text-slate-950 cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2721,7 +2721,7 @@ export default function App() {
             {/* Interactive Timestamp Jumper */}
             {activeVideoModal.timestamps && activeVideoModal.timestamps.length > 0 && (
               <div className="space-y-2 pt-1">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider block">
                   Click to Seek Video to Key Sections:
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2735,12 +2735,12 @@ export default function App() {
                       className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer flex items-center justify-between ${
                         videoTimestamp === (ts.seconds || 0)
                           ? 'bg-[#ea8b21]/15 border-[#ea8b21] text-slate-900 font-bold shadow-2xs'
-                          : 'bg-[#faf5ec]/60 border-[#ebdcc8] text-slate-700 hover:bg-[#faf5ec]'
+                          : 'bg-[#faf5ec]/60 border-[#ebdcc8] text-slate-900 font-medium hover:bg-[#faf5ec]'
                       }`}
                     >
                       <span className="font-bold truncate mr-2">{ts.label}</span>
                       <Play className={`w-3.5 h-3.5 shrink-0 ${
-                        videoTimestamp === (ts.seconds || 0) ? 'text-[#ea8b21]' : 'text-slate-400'
+                        videoTimestamp === (ts.seconds || 0) ? 'text-[#ea8b21]' : 'text-slate-600'
                       }`} />
                     </button>
                   ))}
@@ -2764,7 +2764,7 @@ export default function App() {
                   href="https://igotkarmayogi.gov.in"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-slate-600 hover:underline flex items-center gap-1.5 font-bold"
+                  className="text-xs text-slate-900 hover:underline flex items-center gap-1.5 font-bold"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>iGOT Karmayogi Portal</span>
@@ -2798,22 +2798,22 @@ export default function App() {
               <h3 className="text-xl font-black text-slate-900">
                 Session Inactivity Warning
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-900 font-medium leading-relaxed">
                 Under Mission Karmayogi (DoPT) & Collection of Statistics Act 2008 standards, unattended sessions on statistical terminals are automatically locked to safeguard census micro-data.
               </p>
             </div>
             <div className="p-4 bg-[#faf5ec] border border-[#ebdcc8] rounded-2xl flex flex-col items-center justify-center">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Locking out in</span>
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Locking out in</span>
               <span className="text-3xl font-black text-[#ea8b21] font-mono mt-1">
                 {secondsRemaining}s
               </span>
-              <span className="text-[11px] text-slate-400 mt-1">Move your cursor or click below to stay signed in</span>
+              <span className="text-[11px] text-slate-900 font-bold mt-1">Move your cursor or click below to stay signed in</span>
             </div>
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer"
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-bold text-xs transition cursor-pointer"
               >
                 Sign Out Now
               </button>
