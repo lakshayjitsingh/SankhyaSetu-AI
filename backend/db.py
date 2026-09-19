@@ -151,23 +151,7 @@ def init_db():
                 ALTER TABLE officers ADD COLUMN IF NOT EXISTS supervisor_email VARCHAR(255);
             """)
 
-            # Create squad_submissions table for Option B daily tracking
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS squad_submissions (
-                    id SERIAL PRIMARY KEY,
-                    squad_id VARCHAR(100) UNIQUE NOT NULL,
-                    squad_name VARCHAR(255) NOT NULL,
-                    field_id VARCHAR(100) NOT NULL,
-                    supervisor_name VARCHAR(255) NOT NULL,
-                    supervisor_email VARCHAR(255) NOT NULL,
-                    submission_status VARCHAR(50) DEFAULT 'pending',
-                    submitted_at VARCHAR(100),
-                    officer_count INT DEFAULT 3,
-                    active_count INT DEFAULT 3,
-                    avg_score NUMERIC(5,2) DEFAULT 0.0,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
+
 
             # Pre-seed standard accounts into Neon if not already present
             seed_accounts = [
@@ -492,46 +476,7 @@ def verify_officer_login(email, password):
     except Exception as e:
         logger.warning(f"Supervisors table check exception: {e}")
 
-    # 3. Fallback check on supervisory_cadres table
-    try:
-        with get_db_cursor(commit=True) as cur:
-            if cur is not None:
-                cur.execute("""
-                    SELECT id, email, password, name, role, cadre_title, department, field_id, badge
-                    FROM supervisory_cadres
-                    WHERE email = %s;
-                """, (email,))
-                sup_row = cur.fetchone()
-                if sup_row:
-                    db_pwd = sup_row[2]
-                    valid = False
-                    if db_pwd.startswith(("scrypt:", "pbkdf2:", "bcrypt:")):
-                        valid = check_password_hash(db_pwd, password)
-                    else:
-                        valid = (db_pwd == password)
-                    
-                    if valid or password == "123456":
-                        return {
-                            "success": True,
-                            "officer": {
-                                "id": sup_row[0],
-                                "email": sup_row[1],
-                                "name": sup_row[3],
-                                "role": sup_row[4],
-                                "portal": sup_row[4],
-                                "role_id": sup_row[7] or "survey_supervisor_asuse",
-                                "role_name": sup_row[5],
-                                "department": sup_row[6],
-                                "badge": sup_row[8],
-                                "is_supervisory": True
-                            }
-                        }
-                    else:
-                        return {"success": False, "error": "Invalid password. Please verify and try again."}
-    except Exception as e:
-        logger.warning(f"Supervisory fallback check exception: {e}")
-
-    # 4. Existing regular officers authentication (completely untouched)
+    # 3. Existing regular officers authentication (completely untouched)
     try:
         with get_db_cursor(commit=True) as cur:
             if cur is None:
