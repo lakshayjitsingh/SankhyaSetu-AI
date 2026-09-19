@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine
 } from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (
@@ -2465,61 +2465,82 @@ export default function App() {
                       </p>
                     </div>
                   ) : (
-                    <div className="h-72 w-full pt-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                          <XAxis 
-                            dataKey="name" 
-                            tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }} 
-                            interval="preserveStartEnd"
-                            dy={8}
-                          />
-                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                          <Tooltip 
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                const data = payload[0].payload;
-                                return (
-                                  <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1.5 border border-slate-700">
-                                    <p className="font-bold text-amber-400">{data.fullName}</p>
-                                    <div className="flex items-center justify-between gap-4 text-[11px]">
-                                      <span className="text-slate-300">Category:</span>
-                                      <span className="font-semibold text-slate-200">{data.type}</span>
+                    <>
+                      <div className="h-72 w-full pt-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis 
+                              dataKey="name" 
+                              tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }} 
+                              interval="preserveStartEnd"
+                              dy={8}
+                            />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                            <Tooltip 
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const data = payload[0].payload;
+                                  return (
+                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1.5 border border-slate-700">
+                                      <p className="font-bold text-amber-400">{data.fullName}</p>
+                                      <div className="flex items-center justify-between gap-4 text-[11px]">
+                                        <span className="text-slate-300">Category:</span>
+                                        <span className="font-semibold text-slate-200">{data.type}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-4 text-[11px]">
+                                        <span className="text-slate-300">Your Score:</span>
+                                        <span className="font-extrabold text-[#ea8b21]">{data.score}%</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-4 text-[11px]">
+                                        <span className="text-slate-400">Target Benchmark:</span>
+                                        <span className="font-bold text-blue-300">{data.target}%</span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                                        Recorded: {data.date}
+                                      </p>
                                     </div>
-                                    <div className="flex items-center justify-between gap-4 text-[11px]">
-                                      <span className="text-slate-300">Your Score:</span>
-                                      <span className="font-extrabold text-[#ea8b21]">{data.score}%</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4 text-[11px]">
-                                      <span className="text-slate-400">Target Benchmark:</span>
-                                      <span className="font-bold text-blue-300">{data.target}%</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
-                                      Recorded: {data.date}
-                                    </p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                          <Bar 
-                            dataKey="score" 
-                            name="Your Score achieved (%)" 
-                            fill="#ea8b21" 
-                            radius={[6, 6, 0, 0]} 
-                          />
-                          <Bar 
-                            dataKey="target" 
-                            name="MoSPI Cadre Target (80%)" 
-                            fill="#cbd5e1" 
-                            radius={[6, 6, 0, 0]} 
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <ReferenceLine 
+                              y={80} 
+                              stroke="#2563eb" 
+                              strokeDasharray="5 4" 
+                              strokeWidth={2}
+                              label={{ 
+                                value: 'MoSPI Benchmark Target (80%)', 
+                                position: 'top', 
+                                fill: '#2563eb', 
+                                fontSize: 11, 
+                                fontWeight: 700 
+                              }} 
+                            />
+                            <Bar 
+                              dataKey="score" 
+                              name="Your Score achieved (%)" 
+                              fill="#ea8b21" 
+                              radius={[6, 6, 0, 0]} 
+                              maxBarSize={48}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Clean Visual Legend */}
+                      <div className="pt-3 border-t border-[#ebdcc8]/80 flex flex-wrap items-center justify-center gap-6 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3.5 h-3.5 rounded-md bg-[#ea8b21] shadow-2xs" />
+                          <span className="font-bold text-slate-900">Your Score achieved (%)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-0 border-t-2 border-dashed border-blue-600" />
+                          <span className="font-bold text-blue-600">MoSPI Cadre Benchmark Target (80%)</span>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -2550,7 +2571,7 @@ export default function App() {
                       No activity logged yet. Your completed tests will appear here chronologically.
                     </p>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-100 max-h-[390px] overflow-y-auto pr-2 custom-scrollbar">
                       {userHistory.map((item, idx) => (
                         <div key={item.id || idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#faf5ec]/40 transition-all rounded-xl px-2">
                           <div className="flex items-start gap-3">

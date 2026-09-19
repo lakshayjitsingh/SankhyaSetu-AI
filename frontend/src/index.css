@@ -11,3 +11,23 @@ body {
   color: #0f172a;
 }
 
+/* Elegant styled scrollbar for dashboard tables and modals */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #faf5ec;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #ea8b21;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d97d16;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #ea8b21 #faf5ec;
+}
+
