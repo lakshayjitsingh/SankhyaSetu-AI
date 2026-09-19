@@ -459,6 +459,7 @@ def auth_change_password():
     email = data.get("email")
     current_password = data.get("current_password")
     new_password = data.get("new_password")
+    cadre = data.get("cadre")
 
     if not email or not current_password or not new_password:
         return jsonify({"success": False, "error": "Email, current password, and new password are required"}), 400
@@ -466,7 +467,8 @@ def auth_change_password():
     result = db.change_officer_password(
         email=email, 
         current_password=current_password, 
-        new_password=new_password
+        new_password=new_password,
+        cadre=cadre
     )
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code

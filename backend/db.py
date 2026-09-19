@@ -642,8 +642,8 @@ def verify_officer_login(email, password):
     return {"success": False, "error": "Login verification failed"}
 
 
-def change_officer_password(email, current_password, new_password):
-    """Securely updates an officer's password in Neon Cloud PostgreSQL.
+def change_officer_password(email, current_password, new_password, cadre=None):
+    """Securely updates a user's password in Neon Cloud PostgreSQL across officers, supervisors, or directorate cadres.
     Strictly blocks Google OAuth accounts and validates current password before saving new scrypt hash."""
     if not email or not current_password or not new_password:
         return {"success": False, "error": "Email, current password, and new password are required."}
@@ -658,26 +658,43 @@ def change_officer_password(email, current_password, new_password):
     if current_password == new_password:
         return {"success": False, "error": "New password must be different from current password."}
 
+    cadre = (cadre or "").strip().lower()
+    if cadre == "supervisor":
+        tables_to_check = ["supervisors", "officers"]
+    elif cadre == "boss":
+        tables_to_check = ["directorate_cadres", "officers"]
+    elif cadre == "officer":
+        tables_to_check = ["officers"]
+    else:
+        tables_to_check = ["supervisors", "directorate_cadres", "officers"]
+
     try:
         with get_db_cursor(commit=True) as cur:
             if cur is None:
                 return {"success": False, "error": "Database unavailable."}
 
-            cur.execute("""
-                SELECT id, email, auth_provider, password
-                FROM officers
-                WHERE email = %s;
-            """, (email,))
+            found_table = None
+            found_row = None
+            for tbl in tables_to_check:
+                cur.execute(f"""
+                    SELECT id, email, auth_provider, password
+                    FROM {tbl}
+                    WHERE email = %s;
+                """, (email,))
+                row = cur.fetchone()
+                if row:
+                    found_table = tbl
+                    found_row = row
+                    break
 
-            row = cur.fetchone()
-            if not row:
-                return {"success": False, "error": "Officer account not found."}
+            if not found_row:
+                return {"success": False, "error": "Account not found."}
 
-            auth_provider = row[2]
-            db_password = row[3]
+            auth_provider = (found_row[2] or "").lower()
+            db_password = found_row[3] or ""
 
             # Google OAuth accounts cannot change password locally
-            if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED":
+            if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED" or db_password.startswith("GOOGLE_"):
                 return {
                     "success": False, 
                     "error": "This account is signed in with Google OAuth. Password changes must be made via your Google Account."
@@ -697,13 +714,13 @@ def change_officer_password(email, current_password, new_password):
 
             # Hash new password with salted scrypt and update in Neon
             new_hash = generate_password_hash(new_password)
-            cur.execute("""
-                UPDATE officers 
+            cur.execute(f"""
+                UPDATE {found_table} 
                 SET password = %s, last_active = CURRENT_TIMESTAMP 
                 WHERE email = %s;
             """, (new_hash, email))
 
-            logger.info(f"Password changed successfully for officer {email}")
+            logger.info(f"Password changed successfully in {found_table} for {email}")
             return {
                 "success": True, 
                 "message": "Password updated successfully."

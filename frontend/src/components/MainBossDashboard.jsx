@@ -3,7 +3,8 @@ import {
   Building2, Users, Award, TrendingUp, AlertTriangle, CheckCircle2, Clock, 
   Trash2, Eye, ArrowLeft, ArrowRight, RefreshCw, Check, 
   ChevronRight, X, ShieldCheck, LogOut, LayoutDashboard, UserCheck2,
-  BarChart3, Database, Menu, ShieldAlert, Sparkles, Shield
+  BarChart3, Database, Menu, ShieldAlert, Sparkles, Shield,
+  Key, EyeOff
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (
@@ -93,6 +94,18 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
   const [isLoadingApprovals, setIsLoadingApprovals] = useState(false);
   const [approvalActionLoading, setApprovalActionLoading] = useState({});
 
+  // Change Password Modal States
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmPassInput, setConfirmPassInput] = useState('');
+  const [changePassError, setChangePassError] = useState('');
+  const [changePassSuccess, setChangePassSuccess] = useState('');
+  const [isSubmittingChangePass, setIsSubmittingChangePass] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+
   const fetchPendingApprovals = async () => {
     setIsLoadingApprovals(true);
     try {
@@ -147,6 +160,71 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4500);
+  };
+
+  // Change Password Handler
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangePassError('');
+    setChangePassSuccess('');
+
+    const trimmedCurrent = currentPassInput.trim();
+    const trimmedNew = newPassInput.trim();
+    const trimmedConfirm = confirmPassInput.trim();
+
+    if (!trimmedCurrent) {
+      setChangePassError('Please enter your current password.');
+      return;
+    }
+
+    if (!trimmedNew || trimmedNew.length < 6) {
+      setChangePassError('New password must be at least 6 characters.');
+      return;
+    }
+
+    if (trimmedNew === trimmedCurrent) {
+      setChangePassError('New password must be different from current password.');
+      return;
+    }
+
+    if (trimmedNew !== trimmedConfirm) {
+      setChangePassError('New passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setIsSubmittingChangePass(true);
+
+    const bossEmail = (activeBoss?.email || 'boss@gmail.com').toLowerCase();
+
+    try {
+      const res = await fetch(`${API_BASE}/db/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: bossEmail,
+          current_password: trimmedCurrent,
+          new_password: trimmedNew,
+          cadre: 'boss'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setChangePassError(data.error || 'Failed to update Directorate password.');
+        setIsSubmittingChangePass(false);
+        return;
+      }
+
+      setChangePassSuccess(data.message || 'Directorate password successfully updated! You can now use your new password.');
+      setCurrentPassInput('');
+      setNewPassInput('');
+      setConfirmPassInput('');
+    } catch (err) {
+      console.error("Change password error:", err);
+      setChangePassError('Connection to security server failed. Please try again.');
+    } finally {
+      setIsSubmittingChangePass(false);
+    }
   };
 
   // Master Permanent Purge (Hard Delete)
@@ -259,39 +337,39 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="space-y-2 pt-1">
+          {/* Navigation Links - Standardized Heights (h-11) & No Size Warping */}
+          <nav className="space-y-1.5 pt-1">
             
             {/* 1. Command Overview */}
             <button
               onClick={() => { setActiveTab('overview'); setMobileSidebarOpen(false); }}
-              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-2xl text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
                 activeTab === 'overview'
-                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30'
                   : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
               <LayoutDashboard className={`w-5 h-5 shrink-0 ${activeTab === 'overview' ? 'text-white' : 'text-slate-800'}`} />
-              <span className="tracking-tight">Command Hub</span>
+              <span className="tracking-tight truncate whitespace-nowrap">Command Hub</span>
             </button>
 
-            {/* 2. Cadre Authorizations */}
+            {/* 2. Cadre Authorizations (Fixed Height, No Text Wrapping) */}
             <button
               onClick={() => { setActiveTab('authorizations'); setMobileSidebarOpen(false); }}
-              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
                 activeTab === 'authorizations'
-                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30'
                   : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <UserCheck2 className={`w-5 h-5 shrink-0 ${activeTab === 'authorizations' ? 'text-white' : 'text-slate-800'}`} />
-                <span className="tracking-tight">Cadre Authorizations</span>
+                <span className="tracking-tight truncate whitespace-nowrap">Cadre Authorizations</span>
               </div>
               {pendingApprovals.length > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+                <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
                   activeTab === 'authorizations' 
-                    ? 'bg-white/20 text-white' 
+                    ? 'bg-white/25 text-white' 
                     : 'bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30'
                 }`}>
                   {pendingApprovals.length}
@@ -299,23 +377,23 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               )}
             </button>
 
-            {/* 3. Regional Cadre Units */}
+            {/* 3. Regional Cadre Units (Fixed Height, No Text Wrapping) */}
             <button
               onClick={() => { setActiveTab('regional'); setMobileSidebarOpen(false); }}
-              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-2xl text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
                 activeTab === 'regional'
-                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30'
                   : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Building2 className={`w-5 h-5 shrink-0 ${activeTab === 'regional' ? 'text-white' : 'text-slate-800'}`} />
-                <span className="tracking-tight">Regional Cadre Units</span>
+                <span className="tracking-tight truncate whitespace-nowrap">Regional Cadre Units</span>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+              <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
                 activeTab === 'regional' 
-                  ? 'bg-white/20 text-white' 
-                  : 'bg-slate-200/80 text-slate-800'
+                  ? 'bg-white/25 text-white' 
+                  : 'bg-slate-200 text-slate-800'
               }`}>
                 {supervisors.length}
               </span>
@@ -324,35 +402,35 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
             {/* 4. National Analytics */}
             <button
               onClick={() => { setActiveTab('analytics'); setMobileSidebarOpen(false); }}
-              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-2xl text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
                 activeTab === 'analytics'
-                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30'
                   : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
               <BarChart3 className={`w-5 h-5 shrink-0 ${activeTab === 'analytics' ? 'text-white' : 'text-slate-800'}`} />
-              <span className="tracking-tight">National Analytics</span>
+              <span className="tracking-tight truncate whitespace-nowrap">National Analytics</span>
             </button>
 
             {/* 5. Master Database Purge & Audit */}
             <button
               onClick={() => { setActiveTab('purge'); setMobileSidebarOpen(false); }}
-              className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3.5 transition-all cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-2xl text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
                 activeTab === 'purge'
-                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30 font-extrabold scale-[1.01]'
+                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30'
                   : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
               }`}
             >
               <Database className={`w-5 h-5 shrink-0 ${activeTab === 'purge' ? 'text-white' : 'text-slate-800'}`} />
-              <span className="tracking-tight">Database Purge & Audit</span>
+              <span className="tracking-tight truncate whitespace-nowrap">Database Purge & Audit</span>
             </button>
 
           </nav>
 
         </div>
 
-        {/* Bottom of Sidebar: Directorate General Profile Card */}
-        <div className="p-3.5 m-2.5 rounded-2xl bg-white/80 border border-[#ebdcc8] shadow-2xs space-y-2.5">
+        {/* Bottom of Sidebar: Directorate General Profile Card & Change Password */}
+        <div className="p-3.5 m-2.5 rounded-2xl bg-white/90 border border-[#ebdcc8] shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden">
               <div className="w-10 h-10 rounded-full bg-[#ea8b21] text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
@@ -360,8 +438,8 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-bold text-slate-900 truncate">{bossDisplayName}</p>
-                <p className="text-xs font-medium text-[#ea8b21] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Deputy Director General
+                <p className="text-xs font-bold text-[#ea8b21] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Deputy Director General
                 </p>
               </div>
             </div>
@@ -369,16 +447,32 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
             <button
               onClick={onLogout}
               title="Sign Out of Main Boss Command Hub"
-              className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
+              className="p-2 text-slate-700 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="px-2 py-1 bg-[#faf5ec] border border-[#ebdcc8] rounded-xl flex items-center justify-between text-[11px]">
-            <span className="text-slate-600 font-medium">Cadre Badge:</span>
+          <div className="px-2.5 py-1 bg-[#faf5ec] border border-[#ebdcc8] rounded-xl flex items-center justify-between text-xs">
+            <span className="text-slate-800 font-bold">Cadre Badge:</span>
             <span className="font-mono font-bold text-[#ea8b21]">DDG-HQ-001</span>
           </div>
+
+          {/* Change Password Option (works same as field officer) */}
+          <button
+            onClick={() => {
+              setShowChangePasswordModal(true);
+              setChangePassError('');
+              setChangePassSuccess('');
+              setCurrentPassInput('');
+              setNewPassInput('');
+              setConfirmPassInput('');
+            }}
+            className="w-full py-2 px-3 bg-[#faf5ec] hover:bg-[#eee3d3] border border-[#ebdcc8] rounded-xl text-xs font-bold text-slate-900 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+          >
+            <Key className="w-3.5 h-3.5 text-[#ea8b21]" />
+            <span>Change Password</span>
+          </button>
         </div>
 
       </aside>
@@ -423,11 +517,11 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-full shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
               Neon PostgreSQL Connected
             </span>
-            <span className="text-[10px] sm:text-[11px] font-semibold px-2.5 sm:px-3 py-0.5 sm:py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-full font-mono shrink-0">
+            <span className="text-xs font-bold px-2.5 sm:px-3 py-0.5 sm:py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-full font-mono shrink-0">
               Tier-2 Directorate
             </span>
           </div>
@@ -439,7 +533,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
           {/* Toast Notification */}
           {toastMessage && (
             <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-amber-300 text-amber-950 p-4 rounded-2xl shadow-xl flex items-start space-x-3 animate-in fade-in slide-in-from-bottom-3 duration-200">
-              <CheckCircle2 className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <div className="text-xs font-bold">{toastMessage}</div>
             </div>
           )}
@@ -453,15 +547,15 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               {/* Executive Authority Banner */}
               <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <div className="flex items-center space-x-2 text-xs text-slate-600 mb-1">
-                    <span>Executive Authority: <strong className="text-slate-900 font-bold">{bossDisplayName}</strong></span>
+                  <div className="flex items-center space-x-2 text-xs text-slate-800 font-semibold mb-1">
+                    <span>Executive Authority: <strong className="text-slate-950 font-bold">{bossDisplayName}</strong></span>
                     <span>•</span>
                     <span>Designation: <span className="text-[#ea8b21] font-bold">Deputy Director General (DDG)</span></span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                     All-India Statistical Cadre Command Hub
                   </h2>
-                  <p className="text-xs text-slate-600 mt-1 max-w-2xl font-medium">
+                  <p className="text-xs text-slate-800 mt-1 max-w-2xl font-semibold leading-relaxed">
                     Central Ministry oversight across all 3 survey divisions (ASUSE Enterprise, PLFS Labour Force, and Household Consumer Expenditure). Real-time roll-call compliance tracking, supervisor accountability, and master purge rights.
                   </p>
                 </div>
@@ -469,8 +563,8 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 <div className="shrink-0 bg-[#faf5ec] p-3.5 rounded-2xl border border-[#ebdcc8] flex items-center space-x-3 shadow-2xs">
                   <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
                   <div className="text-xs">
-                    <div className="font-bold text-slate-900">Level 4 Audit Security Active</div>
-                    <div className="text-slate-600 font-medium">Centralized Database Connection</div>
+                    <div className="font-black text-slate-950">Level 4 Audit Security Active</div>
+                    <div className="text-slate-800 font-bold">Centralized Database Connection</div>
                   </div>
                 </div>
               </div>
@@ -486,7 +580,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                       <h4 className="text-sm font-black text-amber-950">
                         {pendingApprovals.length} Directorate Cadre Authorization{pendingApprovals.length > 1 ? 's' : ''} Pending
                       </h4>
-                      <p className="text-xs text-amber-800 font-medium">
+                      <p className="text-xs text-amber-900 font-semibold">
                         Newly registered supervisors and field investigators require executive credential review.
                       </p>
                     </div>
@@ -504,53 +598,53 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               {/* Ministry Macro KPI Ribbon */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
                     <span>Daily Squad Submissions</span>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                   </div>
                   <div className="text-2xl font-black text-slate-900">
-                    {submittedCount} <span className="text-sm font-bold text-slate-500">/ {totalSquads} Submitted</span>
+                    {submittedCount} <span className="text-sm font-bold text-slate-800">/ {totalSquads} Submitted</span>
                   </div>
-                  <div className="text-xs text-emerald-700 font-bold mt-2">
+                  <div className="text-xs text-emerald-800 font-bold mt-2">
                     {submittedCount === totalSquads ? '100% On-Time Reporting' : `${totalSquads - submittedCount} Squad Awaiting Roll-Call`}
                   </div>
                 </div>
 
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
                     <span>Active Field Force</span>
                     <Users className="w-4 h-4 text-[#ea8b21]" />
                   </div>
                   <div className="text-2xl font-black text-slate-900">
-                    {totalActive} <span className="text-sm font-bold text-slate-500">/ {totalOfficers} Officers</span>
+                    {totalActive} <span className="text-sm font-bold text-slate-800">/ {totalOfficers} Officers</span>
                   </div>
-                  <div className="text-xs text-slate-600 font-medium mt-2">
+                  <div className="text-xs text-slate-800 font-bold mt-2">
                     Across 3 Regional Cadre Units
                   </div>
                 </div>
 
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
                     <span>National Competency Index</span>
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    <TrendingUp className="w-4 h-4 text-emerald-700" />
                   </div>
                   <div className="text-2xl font-black text-slate-900">
-                    {nationalAvg}% <span className="text-sm font-bold text-slate-500">Average</span>
+                    {nationalAvg}% <span className="text-sm font-bold text-slate-800">Average</span>
                   </div>
-                  <div className="text-xs text-slate-600 font-medium mt-2">
+                  <div className="text-xs text-slate-800 font-bold mt-2">
                     Ministry Benchmark: 70.0%
                   </div>
                 </div>
 
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
                     <span>Supervisors on Duty</span>
                     <Award className="w-4 h-4 text-[#ea8b21]" />
                   </div>
                   <div className="text-2xl font-black text-slate-900">
-                    {totalSquads} <span className="text-sm font-bold text-slate-500">Senior Officers</span>
+                    {totalSquads} <span className="text-sm font-bold text-slate-800">Senior Officers</span>
                   </div>
-                  <div className="text-xs text-slate-600 font-medium mt-2">
+                  <div className="text-xs text-slate-800 font-bold mt-2">
                     ASUSE, PLFS, & Household
                   </div>
                 </div>
@@ -561,7 +655,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#ebdcc8] pb-3">
                   <div>
                     <h3 className="text-base font-black text-slate-900">Survey Divisions Status Summary</h3>
-                    <p className="text-xs text-slate-600 font-medium">Real-time roll-call compliance across regional statistical squads.</p>
+                    <p className="text-xs text-slate-800 font-semibold">Real-time roll-call compliance across regional statistical squads.</p>
                   </div>
                   <button
                     onClick={() => setActiveTab('regional')}
@@ -576,18 +670,18 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                   {supervisors.map(sup => (
                     <div key={sup.squadId} className="p-4 rounded-xl bg-[#faf5ec]/50 border border-[#ebdcc8] space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-sm text-slate-900">{sup.squadName}</span>
+                        <span className="font-bold text-sm text-slate-950">{sup.squadName}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          sup.submissionStatus === 'submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                          sup.submissionStatus === 'submitted' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-amber-100 text-amber-950 border border-amber-300'
                         }`}>
                           {sup.submissionStatus === 'submitted' ? 'Submitted' : 'Pending Roll-Call'}
                         </span>
                       </div>
                       <div className="text-xs text-[#ea8b21] font-bold">{sup.fieldName}</div>
-                      <div className="text-xs text-slate-600 font-medium">Supervisor: {sup.supervisorName}</div>
+                      <div className="text-xs text-slate-800 font-bold">Supervisor: {sup.supervisorName}</div>
                       <div className="pt-2 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs">
-                        <span className="text-slate-500 font-medium">{sup.activeCount}/{sup.officerCount} Active</span>
-                        <span className="font-mono font-bold text-slate-900">{sup.avgScore}% avg</span>
+                        <span className="text-slate-800 font-semibold">{sup.activeCount}/{sup.officerCount} Active</span>
+                        <span className="font-mono font-black text-slate-950">{sup.avgScore}% avg</span>
                       </div>
                     </div>
                   ))}
@@ -613,7 +707,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                       </span>
                     )}
                   </h3>
-                  <p className="text-xs text-slate-600 font-medium mt-0.5">
+                  <p className="text-xs text-slate-800 font-semibold mt-0.5">
                     High-level executive credential review. Authorize newly registered supervisors and field investigators to enable platform access.
                   </p>
                 </div>
@@ -621,7 +715,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 <button
                   onClick={fetchPendingApprovals}
                   disabled={isLoadingApprovals}
-                  className="self-start sm:self-auto text-xs font-bold px-3.5 py-2 bg-[#faf5ec] hover:bg-[#ebdcc8]/50 text-slate-800 border border-[#ebdcc8] rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                  className="self-start sm:self-auto text-xs font-bold px-3.5 py-2 bg-[#faf5ec] hover:bg-[#ebdcc8]/50 text-slate-900 border border-[#ebdcc8] rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApprovals ? 'animate-spin' : ''}`} />
                   <span>Refresh Queue</span>
@@ -630,11 +724,11 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
 
               {pendingApprovals.length === 0 ? (
                 <div className="bg-white border border-[#ebdcc8] rounded-2xl p-10 text-center shadow-2xs space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center border border-emerald-200">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <h4 className="text-base font-black text-slate-900">All Cadre Registrations Authorized</h4>
-                  <p className="text-xs text-slate-600 max-w-md mx-auto font-medium">
+                  <p className="text-xs text-slate-800 max-w-md mx-auto font-semibold">
                     There are no pending supervisor or officer registration requests in the central MoSPI queue.
                   </p>
                 </div>
@@ -644,27 +738,27 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                     <div key={req.id || req.email} className="bg-white border border-amber-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-black text-slate-900">{req.name}</span>
+                          <span className="text-sm font-black text-slate-950">{req.name}</span>
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
                             req.target_role === 'supervisor' 
-                              ? 'bg-purple-100 text-purple-900 border border-purple-200' 
-                              : 'bg-amber-100 text-amber-900 border border-amber-200'
+                              ? 'bg-purple-100 text-purple-950 border border-purple-300' 
+                              : 'bg-amber-100 text-amber-950 border border-amber-300'
                           }`}>
                             {req.target_role === 'supervisor' ? 'Supervisor Cadre' : 'Field Officer'}
                           </span>
                         </div>
                         <div className="text-xs font-mono text-[#ea8b21] font-bold">{req.email}</div>
-                        <div className="text-xs text-slate-600 font-medium">
+                        <div className="text-xs text-slate-800 font-bold">
                           {req.role_name} • {req.department}
                         </div>
                         {req.requested_at && (
-                          <div className="text-[11px] text-slate-500 font-medium">
+                          <div className="text-xs text-slate-700 font-medium">
                             Requested: {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(req.requested_at).toLocaleDateString()}
                           </div>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
                         <button
                           type="button"
                           disabled={approvalActionLoading[req.email]}
@@ -678,7 +772,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                           type="button"
                           disabled={approvalActionLoading[req.email]}
                           onClick={() => handleApproveCadre(req.email, req.name, req.target_role, 'reject')}
-                          className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                          className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-800 hover:text-rose-800 border border-slate-300 hover:border-rose-300 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
                         >
                           Decline
                         </button>
@@ -702,11 +796,11 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                     <Building2 className="w-4 h-4 text-[#ea8b21]" />
                     <span>Regional Field Supervisors & Cadre Status</span>
                   </h3>
-                  <p className="text-xs text-slate-600 font-medium">
+                  <p className="text-xs text-slate-800 font-semibold">
                     Track daily roll-call compliance, inspect squads, and exercise master purge rights.
                   </p>
                 </div>
-                <div className="text-xs font-bold text-amber-900 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 self-start sm:self-auto">
+                <div className="text-xs font-bold text-amber-950 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-300 self-start sm:self-auto">
                   MoSPI Directorate Executive Authority
                 </div>
               </div>
@@ -714,15 +808,15 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               {/* Table (NO Remind / Email buttons) */}
               <div className="bg-white rounded-2xl border border-[#ebdcc8] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-800">
-                    <thead className="bg-[#faf5ec]/80 uppercase text-[11px] text-slate-600 font-bold tracking-wider border-b border-[#ebdcc8]">
+                  <table className="w-full text-left text-xs text-slate-900">
+                    <thead className="bg-[#faf5ec] uppercase text-xs text-slate-900 font-bold tracking-wider border-b border-[#ebdcc8]">
                       <tr>
-                        <th scope="col" className="py-3 px-4 font-bold">Squad Unit & Survey Field</th>
-                        <th scope="col" className="py-3 px-4 font-bold">Supervisor in Charge</th>
-                        <th scope="col" className="py-3 px-4 font-bold">Daily Compliance Status</th>
-                        <th scope="col" className="py-3 px-4 font-bold">Officers Active / Total</th>
-                        <th scope="col" className="py-3 px-4 font-bold">Avg Score</th>
-                        <th scope="col" className="py-3 px-4 font-bold text-right">Director Action</th>
+                        <th scope="col" className="py-3 px-4 font-black">Squad Unit & Survey Field</th>
+                        <th scope="col" className="py-3 px-4 font-black">Supervisor in Charge</th>
+                        <th scope="col" className="py-3 px-4 font-black">Daily Compliance Status</th>
+                        <th scope="col" className="py-3 px-4 font-black">Officers Active / Total</th>
+                        <th scope="col" className="py-3 px-4 font-black">Avg Score</th>
+                        <th scope="col" className="py-3 px-4 font-black text-right">Director Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#ebdcc8]/70">
@@ -730,26 +824,26 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                         <tr key={sup.squadId} className="hover:bg-[#faf5ec]/50 transition">
                           {/* Squad Details */}
                           <td className="py-4 px-4">
-                            <div className="font-bold text-slate-900 text-sm">
+                            <div className="font-bold text-slate-950 text-sm">
                               {sup.squadName}
                             </div>
-                            <div className="text-[#ea8b21] font-bold text-[11px] mt-0.5">
+                            <div className="text-[#ea8b21] font-bold text-xs mt-0.5">
                               {sup.fieldName}
                             </div>
-                            <div className="text-slate-500 text-[10px] font-mono mt-0.5">
+                            <div className="text-slate-800 text-xs font-mono font-semibold mt-0.5">
                               ID: {sup.squadId}
                             </div>
                           </td>
 
                           {/* Supervisor */}
                           <td className="py-4 px-4">
-                            <div className="font-bold text-slate-900">
+                            <div className="font-bold text-slate-950">
                               {sup.supervisorName}
                             </div>
-                            <div className="text-slate-600 text-[11px] font-medium">
+                            <div className="text-slate-800 text-xs font-semibold">
                               {sup.supervisorCadre}
                             </div>
-                            <div className="text-slate-500 font-mono text-[10px] mt-0.5 select-all">
+                            <div className="text-slate-700 font-mono text-xs font-semibold mt-0.5 select-all">
                               {sup.supervisorEmail}
                             </div>
                           </td>
@@ -758,21 +852,21 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                           <td className="py-4 px-4">
                             {sup.submissionStatus === 'submitted' ? (
                               <div>
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                  <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-700" />
                                   Submitted Today
                                 </span>
-                                <div className="text-[11px] text-slate-500 font-medium mt-1">
+                                <div className="text-xs text-slate-800 font-bold mt-1">
                                   Logged at {sup.submittedAt}
                                 </div>
                               </div>
                             ) : (
                               <div>
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 animate-pulse">
-                                  <Clock className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-950 border border-amber-300 animate-pulse">
+                                  <Clock className="w-3.5 h-3.5 mr-1 text-amber-700" />
                                   Pending Submission
                                 </span>
-                                <div className="text-[11px] text-amber-800 font-semibold mt-1">
+                                <div className="text-xs text-amber-900 font-black mt-1">
                                   Awaiting daily roll-call
                                 </div>
                               </div>
@@ -781,11 +875,11 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
 
                           {/* Officer Counts */}
                           <td className="py-4 px-4">
-                            <div className="font-mono font-bold text-slate-900">
+                            <div className="font-mono font-black text-slate-950">
                               {sup.activeCount} Active / {sup.officerCount} Total
                             </div>
                             {sup.deactivatedCount > 0 && (
-                              <div className="text-[11px] text-rose-700 font-bold mt-0.5">
+                              <div className="text-xs text-rose-800 font-black mt-0.5">
                                 {sup.deactivatedCount} Relieved / Deactivated
                               </div>
                             )}
@@ -794,7 +888,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                           {/* Average Score */}
                           <td className="py-4 px-4">
                             <span className={`text-base font-black font-mono ${
-                              sup.avgScore >= 70 ? 'text-emerald-700' : 'text-amber-700'
+                              sup.avgScore >= 70 ? 'text-emerald-800' : 'text-amber-800'
                             }`}>
                               {sup.avgScore}%
                             </span>
@@ -804,7 +898,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                           <td className="py-4 px-4 text-right">
                             <button
                               onClick={() => setViewSquad(sup)}
-                              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-[#ebdcc8] shadow-2xs transition cursor-pointer"
+                              className="inline-flex items-center text-xs font-bold px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-900 border border-[#ebdcc8] shadow-2xs transition cursor-pointer"
                               title="Inspect Squad Officers & Details"
                             >
                               <Eye className="w-3.5 h-3.5 mr-1.5 text-[#ea8b21]" />
@@ -832,7 +926,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                   <BarChart3 className="w-5 h-5 text-[#ea8b21]" />
                   <span>National Statistical Competency Benchmarks</span>
                 </h3>
-                <p className="text-xs text-slate-600 font-medium">
+                <p className="text-xs text-slate-800 font-semibold">
                   Aggregated readiness metrics across the 3 core survey divisions under the Ministry of Statistics and Programme Implementation.
                 </p>
               </div>
@@ -842,30 +936,30 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                   <div key={sup.squadId} className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-[#ea8b21]">{sup.fieldName.split('(')[0]}</span>
-                      <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{sup.squadId}</span>
+                      <span className="text-xs font-mono font-bold bg-slate-200 text-slate-900 px-2 py-0.5 rounded">{sup.squadId}</span>
                     </div>
                     <h4 className="text-base font-black text-slate-900">{sup.squadName}</h4>
                     
                     <div className="space-y-2 pt-1 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-slate-600 font-medium">Competency Index:</span>
-                        <span className="font-mono font-black text-slate-900">{sup.avgScore}%</span>
+                        <span className="text-slate-800 font-semibold">Competency Index:</span>
+                        <span className="font-mono font-black text-slate-950">{sup.avgScore}%</span>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                         <div 
-                          className={`h-2 rounded-full ${sup.avgScore >= 70 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                          className={`h-2 rounded-full ${sup.avgScore >= 70 ? 'bg-emerald-600' : 'bg-amber-600'}`}
                           style={{ width: `${sup.avgScore}%` }}
                         ></div>
                       </div>
 
                       <div className="flex justify-between pt-1">
-                        <span className="text-slate-600 font-medium">Active Deployment:</span>
-                        <span className="font-bold text-slate-800">{sup.activeCount} of {sup.officerCount} Officers</span>
+                        <span className="text-slate-800 font-semibold">Active Deployment:</span>
+                        <span className="font-bold text-slate-950">{sup.activeCount} of {sup.officerCount} Officers</span>
                       </div>
 
                       <div className="flex justify-between">
-                        <span className="text-slate-600 font-medium">Cadre Relieved:</span>
-                        <span className={`font-bold ${sup.deactivatedCount > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
+                        <span className="text-slate-800 font-semibold">Cadre Relieved:</span>
+                        <span className={`font-black ${sup.deactivatedCount > 0 ? 'text-rose-700' : 'text-slate-700'}`}>
                           {sup.deactivatedCount}
                         </span>
                       </div>
@@ -875,11 +969,11 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               </div>
 
               {/* Ministry Standard Summary */}
-              <div className="bg-[#faf5ec] rounded-2xl border border-[#ebdcc8] p-4 text-xs text-slate-700 flex items-start space-x-3">
+              <div className="bg-[#faf5ec] rounded-2xl border border-[#ebdcc8] p-4 text-xs text-slate-900 flex items-start space-x-3">
                 <ShieldCheck className="w-5 h-5 text-[#ea8b21] shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold text-slate-900">National Statistical Benchmark Standards:</span>
-                  <p className="mt-0.5 leading-relaxed font-medium">
+                  <span className="font-black text-slate-950">National Statistical Benchmark Standards:</span>
+                  <p className="mt-0.5 leading-relaxed font-semibold text-slate-800">
                     The Directorate General requires a minimum unit index of 70% before survey schedules are certified for National Accounts GDP compilation. Units falling below threshold receive targeted iGOT Karmayogi intervention.
                   </p>
                 </div>
@@ -900,11 +994,11 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                     <Database className="w-5 h-5 text-[#ea8b21]" />
                     <span>Master Database Purge & Hard Deletion Tool</span>
                   </h3>
-                  <span className="text-xs font-bold px-3 py-1 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl">
+                  <span className="text-xs font-bold px-3 py-1 bg-rose-50 text-rose-800 border border-rose-300 rounded-xl">
                     DDG Level 4 Clearance Required
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 font-medium">
+                <p className="text-xs text-slate-800 font-semibold">
                   Unlike field supervisor soft-deactivation, a Master Permanent Purge hard-deletes records from Neon Cloud PostgreSQL. All test records, historical audit logs, and digital IDs are irrecoverably removed.
                 </p>
               </div>
@@ -920,29 +1014,29 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                   {supervisors.flatMap(s => s.officers.map(o => ({ ...o, squadId: s.squadId, squadName: s.squadName }))).map((officer) => (
                     <div key={officer.id} className="p-3.5 flex items-center justify-between hover:bg-white transition">
                       <div>
-                        <div className="font-bold text-slate-900 flex items-center gap-2">
+                        <div className="font-bold text-slate-950 flex items-center gap-2">
                           <span>{officer.name}</span>
-                          <span className="font-mono text-slate-500 font-normal">({officer.id})</span>
+                          <span className="font-mono text-slate-800 font-bold">({officer.id})</span>
                           {officer.status === 'deactivated' && (
-                            <span className="text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 rounded font-bold">
+                            <span className="text-[10px] bg-rose-100 text-rose-900 border border-rose-300 px-1.5 rounded font-bold">
                               Deactivated
                             </span>
                           )}
                         </div>
-                        <div className="text-slate-500 text-[11px] mt-0.5">
-                          {officer.cadre} • {officer.squadName} • <span className="font-mono">{officer.email}</span>
+                        <div className="text-slate-800 text-xs font-semibold mt-0.5">
+                          {officer.cadre} • {officer.squadName} • <span className="font-mono font-bold text-slate-900">{officer.email}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <span className={`font-mono font-bold ${officer.score >= 70 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          <span className={`font-mono font-black ${officer.score >= 70 ? 'text-emerald-800' : 'text-amber-800'}`}>
                             {officer.score}%
                           </span>
                         </div>
                         <button
                           onClick={() => setPurgeTarget({ squadId: officer.squadId, officer })}
-                          className="p-2 text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 transition cursor-pointer shadow-2xs"
+                          className="p-2 text-rose-800 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 transition cursor-pointer shadow-2xs"
                           title="Purge permanently from database"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -960,6 +1054,151 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
 
       </div>
 
+      {/* Change Password Modal (Identical to User Workspace) */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-[#ebdcc8] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#ebdcc8]/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#ea8b21]/10 text-[#ea8b21] flex items-center justify-center">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Change Directorate Password</h3>
+                  <p className="text-xs text-slate-700 font-semibold">Encrypted Credential Update in Neon</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowChangePasswordModal(false);
+                  setChangePassError('');
+                  setChangePassSuccess('');
+                }}
+                className="p-1.5 hover:bg-[#faf5ec] rounded-xl text-slate-700 hover:text-slate-950 cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {changePassError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-bold">{changePassError}</span>
+              </div>
+            )}
+
+            {changePassSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-bold">{changePassSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-950 block mb-1">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? "text" : "password"}
+                    required
+                    placeholder="Enter current password"
+                    value={currentPassInput}
+                    onChange={(e) => {
+                      setCurrentPassInput(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-950 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 hover:text-slate-950 cursor-pointer"
+                  >
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-950 block mb-1">New Password (min. 6 characters)</label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? "text" : "password"}
+                    required
+                    placeholder="Enter new password"
+                    value={newPassInput}
+                    onChange={(e) => {
+                      setNewPassInput(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-950 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 hover:text-slate-950 cursor-pointer"
+                  >
+                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-950 block mb-1">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPass ? "text" : "password"}
+                    required
+                    placeholder="Re-enter new password"
+                    value={confirmPassInput}
+                    onChange={(e) => {
+                      setConfirmPassInput(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-950 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 hover:text-slate-950 cursor-pointer"
+                  >
+                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePasswordModal(false);
+                    setChangePassError('');
+                    setChangePassSuccess('');
+                  }}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingChangePass}
+                  className={`px-5 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center gap-1.5 ${isSubmittingChangePass ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {isSubmittingChangePass ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Updating Password...</span>
+                    </>
+                  ) : (
+                    <span>Update Password</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Point 3: View Squad Modal Drawer (NO Email buttons) */}
       {viewSquad && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -968,20 +1207,20 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               <div>
                 <span className="text-xs font-bold text-[#ea8b21]">{viewSquad.fieldName}</span>
                 <h3 className="font-black text-slate-900 text-lg">{viewSquad.squadName}</h3>
-                <div className="text-xs text-slate-600 mt-0.5 font-medium">
-                  Supervisor: <strong className="text-slate-900 font-bold">{viewSquad.supervisorName}</strong> ({viewSquad.supervisorCadre})
+                <div className="text-xs text-slate-800 mt-0.5 font-bold">
+                  Supervisor: <strong className="text-slate-950 font-bold">{viewSquad.supervisorName}</strong> ({viewSquad.supervisorCadre})
                 </div>
               </div>
               <button 
                 onClick={() => setViewSquad(null)}
-                className="text-slate-500 hover:text-slate-900 text-xs px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold cursor-pointer"
+                className="text-slate-700 hover:text-slate-950 text-xs px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold cursor-pointer"
               >
                 ✕ Close
               </button>
             </div>
 
             <div className="space-y-3">
-              <div className="text-xs font-black uppercase tracking-wider text-slate-600">
+              <div className="text-xs font-black uppercase tracking-wider text-slate-800">
                 Squad Officers Roster ({viewSquad.officers.length})
               </div>
 
@@ -989,27 +1228,27 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 {viewSquad.officers.map((officer) => (
                   <div key={officer.id} className="p-3.5 flex items-center justify-between hover:bg-white transition">
                     <div>
-                      <div className="font-bold text-slate-900 flex items-center">
+                      <div className="font-bold text-slate-950 flex items-center">
                         {officer.name}
                         {officer.status === 'deactivated' && (
-                          <span className="ml-2 text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 rounded font-bold">
+                          <span className="ml-2 text-[10px] bg-rose-100 text-rose-900 border border-rose-300 px-1.5 rounded font-bold">
                             Deactivated
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-600 font-medium">
-                        {officer.id} • {officer.cadre} • <span className="font-mono text-[11px] text-slate-500">{officer.email}</span>
+                      <div className="text-xs text-slate-800 font-semibold">
+                        {officer.id} • {officer.cadre} • <span className="font-mono text-xs text-slate-900 font-bold">{officer.email}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-3">
                       <div className="text-right">
                         <div className={`font-mono font-black text-sm ${
-                          officer.score >= 70 ? 'text-emerald-700' : (officer.score > 0 ? 'text-amber-700' : 'text-slate-400')
+                          officer.score >= 70 ? 'text-emerald-800' : (officer.score > 0 ? 'text-amber-800' : 'text-slate-600')
                         }`}>
                           {officer.score}%
                         </div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold">
+                        <div className="text-xs text-slate-800 uppercase font-black">
                           {officer.status}
                         </div>
                       </div>
@@ -1017,7 +1256,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                       {/* Master Permanent Purge Button */}
                       <button
                         onClick={() => setPurgeTarget({ squadId: viewSquad.squadId, officer })}
-                        className="p-2 text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 transition cursor-pointer shadow-2xs"
+                        className="p-2 text-rose-800 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-xl border border-rose-200 transition cursor-pointer shadow-2xs"
                         title="Master Permanent Purge from Database (Hard Delete)"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1028,9 +1267,9 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               </div>
             </div>
 
-            <div className="text-xs text-slate-700 bg-[#faf5ec] p-3.5 rounded-2xl border border-[#ebdcc8]">
-              <span className="font-bold text-slate-900">HQ Authority Note:</span>
-              <p className="mt-0.5 leading-relaxed font-medium">
+            <div className="text-xs text-slate-900 bg-[#faf5ec] p-3.5 rounded-2xl border border-[#ebdcc8]">
+              <span className="font-black text-slate-950">HQ Authority Note:</span>
+              <p className="mt-0.5 leading-relaxed font-semibold text-slate-800">
                 The trash icon triggers a <strong>Master Permanent Purge</strong>. Unlike lower-tier deactivation, this completely erases records from the central database. Use only for fraudulent or test entries.
               </p>
             </div>
@@ -1042,24 +1281,24 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
       {purgeTarget && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-rose-200 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center space-x-3 text-rose-700 border-b border-slate-100 pb-3">
+            <div className="flex items-center space-x-3 text-rose-800 border-b border-slate-200 pb-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5 text-rose-600" />
+                <Trash2 className="w-5 h-5 text-rose-700" />
               </div>
               <div>
-                <h3 className="font-black text-slate-900 text-base">Authorize Master Purge</h3>
-                <div className="text-xs text-rose-700 font-bold">Permanent Database Deletion</div>
+                <h3 className="font-black text-slate-950 text-base">Authorize Master Purge</h3>
+                <div className="text-xs text-rose-850 font-black">Permanent Database Deletion</div>
               </div>
             </div>
 
-            <div className="text-xs text-slate-700 space-y-2">
-              <p className="font-medium">
-                You are about to permanently delete officer <strong className="text-slate-900">{purgeTarget.officer.name}</strong> (<span className="font-mono font-bold text-[#ea8b21]">{purgeTarget.officer.id}</span>) from the central MoSPI database.
+            <div className="text-xs text-slate-800 space-y-2">
+              <p className="font-semibold text-slate-900">
+                You are about to permanently delete officer <strong className="text-slate-950 font-black">{purgeTarget.officer.name}</strong> (<span className="font-mono font-black text-[#ea8b21]">{purgeTarget.officer.id}</span>) from the central MoSPI database.
               </p>
-              <div className="bg-rose-50 p-3 rounded-xl border border-rose-200 text-rose-900 leading-relaxed font-semibold">
+              <div className="bg-rose-50 p-3 rounded-xl border border-rose-300 text-rose-950 leading-relaxed font-bold">
                 ⚠️ <strong>WARNING:</strong> This action cannot be undone. All test attempts, audit logs, and digital IDs associated with this account will be erased from Neon Cloud PostgreSQL.
               </div>
-              <p className="text-slate-600 font-bold pt-1">
+              <p className="text-slate-900 font-bold pt-1">
                 Type <strong>PURGE</strong> in capital letters to confirm authorization:
               </p>
               <input
@@ -1067,17 +1306,17 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 value={purgeConfirmText}
                 onChange={(e) => setPurgeConfirmText(e.target.value)}
                 placeholder="Type PURGE"
-                className="w-full bg-[#faf5ec] border border-[#ebdcc8] text-slate-900 font-mono px-3 py-2.5 rounded-xl text-sm focus:outline-rose-500 font-bold"
+                className="w-full bg-[#faf5ec] border border-[#ebdcc8] text-slate-950 font-mono px-3 py-2.5 rounded-xl text-sm focus:outline-rose-500 font-black"
               />
             </div>
 
-            <div className="flex items-center justify-end space-x-3 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-end space-x-3 pt-2 border-t border-slate-200">
               <button
                 onClick={() => {
                   setPurgeTarget(null);
                   setPurgeConfirmText('');
                 }}
-                className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition cursor-pointer"
+                className="text-xs font-bold text-slate-800 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
