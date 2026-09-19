@@ -366,6 +366,32 @@ def auth_supervisor_sync_google():
     return jsonify(result), status_code
 
 
+@app.route("/api/db/auth/boss/register", methods=["POST"])
+def auth_boss_register():
+    """Registers a new Directorate General account in the dedicated directorate_cadres table."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    password = data.get("password")
+    name = data.get("name")
+
+    result = db.register_boss(email=email, password=password, name=name)
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/db/auth/boss/sync-google", methods=["POST"])
+def auth_boss_sync_google():
+    """Syncs a Google-authenticated Directorate General account in directorate_cadres table."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    name = data.get("name")
+
+    result = db.sync_boss_google(email=email, name=name)
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+
 @app.route("/api/db/auth/login", methods=["POST"])
 def auth_login():
     """Verifies officer credentials directly against Neon Cloud PostgreSQL."""

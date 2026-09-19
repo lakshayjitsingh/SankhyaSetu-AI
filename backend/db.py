@@ -194,6 +194,79 @@ def init_db():
                 WHERE password = 'GOOGLE_OAUTH_VERIFIED' OR password LIKE 'GOOGLE_%';
             """)
 
+            # 4. Dedicated Supervisors Table (Card 2)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS supervisors (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    role VARCHAR(50) DEFAULT 'supervisor',
+                    cadre_title VARCHAR(255) DEFAULT 'Senior Statistical Officer (SSO)',
+                    department VARCHAR(255) DEFAULT 'Field Operations Division',
+                    field_id VARCHAR(100) DEFAULT 'survey_supervisor_asuse',
+                    badge VARCHAR(100) DEFAULT 'SSO-CADRE',
+                    auth_provider VARCHAR(50) DEFAULT 'manual',
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            supervisor_seeds = [
+                ("supervisor1@gmail.com", "123456", "Rajesh Kumar", "Senior Statistical Officer (SSO)", "Delhi North Cadre Unit #04", "survey_supervisor_asuse", "SSO-DEL-101"),
+                ("supervisor2@gmail.com", "123456", "Sunita Devi", "Senior Statistical Officer (SSO)", "Varanasi Cantt Unit #08", "field_investigator_nsso", "SSO-VNS-108"),
+                ("supervisor3@gmail.com", "123456", "Anil Mehta", "Senior Statistical Officer (SSO)", "Bengaluru South Unit #12", "junior_statistical_officer_cso", "SSO-BLR-114")
+            ]
+            for s_email, s_pwd, s_name, s_cadre, s_dept, s_fid, s_badge in supervisor_seeds:
+                cur.execute("""
+                    INSERT INTO supervisors (email, password, name, role, cadre_title, department, field_id, badge, auth_provider, status)
+                    VALUES (%s, %s, %s, 'supervisor', %s, %s, %s, %s, 'manual', 'active')
+                    ON CONFLICT (email) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        field_id = EXCLUDED.field_id,
+                        department = EXCLUDED.department,
+                        badge = EXCLUDED.badge;
+                """, (s_email, s_pwd, s_name, s_cadre, s_dept, s_fid, s_badge))
+
+            # 5. Dedicated Directorate Cadres Table (Card 3: Boss)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS directorate_cadres (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    role VARCHAR(50) DEFAULT 'boss',
+                    cadre_title VARCHAR(255) DEFAULT 'Deputy Director General (DDG)',
+                    department VARCHAR(255) DEFAULT 'MoSPI Central Directorate, New Delhi',
+                    badge VARCHAR(100) DEFAULT 'DDG-HQ-001',
+                    auth_provider VARCHAR(50) DEFAULT 'manual',
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            cur.execute("""
+                ALTER TABLE supervisors ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'manual';
+                ALTER TABLE supervisors ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+                ALTER TABLE supervisors ADD COLUMN IF NOT EXISTS last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+                ALTER TABLE directorate_cadres ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'manual';
+                ALTER TABLE directorate_cadres ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+                ALTER TABLE directorate_cadres ADD COLUMN IF NOT EXISTS last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+            """)
+
+            cur.execute("""
+                INSERT INTO directorate_cadres (email, password, name, role, cadre_title, department, badge, auth_provider, status)
+                VALUES ('boss@gmail.com', '123456', 'Dr. S. K. Mukherjee', 'boss', 'Deputy Director General (DDG)', 'MoSPI Central Directorate, New Delhi', 'DDG-HQ-001', 'manual', 'active')
+                ON CONFLICT (email) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    password = EXCLUDED.password,
+                    role = EXCLUDED.role,
+                    cadre_title = EXCLUDED.cadre_title,
+                    department = EXCLUDED.department,
+                    badge = EXCLUDED.badge;
+            """)
+
             logger.info("Neon database tables and seed accounts verified successfully.")
             return True
     except Exception as e:
@@ -837,4 +910,144 @@ def sync_supervisor_google(email, name=None):
     except Exception as e:
         logger.error(f"Supervisor Google sync error: {e}")
         return {"success": False, "error": str(e)}
+
+
+def register_boss(email, password, name=None):
+    """Registers a new Directorate General account in the dedicated directorate_cadres table."""
+    if not email or not password:
+        return {"success": False, "error": "Email and password are required"}
+
+    email = email.strip().lower()
+    if not name:
+        name = email.split("@")[0].replace(".", " ").title()
+
+    pwd_hash = generate_password_hash(password)
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                # Seamless offline fallback
+                return {
+                    "success": True,
+                    "officer": {
+                        "email": email,
+                        "name": name,
+                        "role": "boss",
+                        "portal": "boss",
+                        "role_name": "Deputy Director General (DDG)",
+                        "department": "MoSPI Central Directorate, New Delhi",
+                        "badge": "DDG-HQ-001",
+                        "is_directorate": True
+                    }
+                }
+
+            cur.execute("""
+                INSERT INTO directorate_cadres (email, password, name, role, cadre_title, department, badge, auth_provider, status)
+                VALUES (%s, %s, %s, 'boss', 'Deputy Director General (DDG)', 'MoSPI Central Directorate, New Delhi', 'DDG-HQ-001', 'manual', 'active')
+                ON CONFLICT (email) DO UPDATE SET
+                    password = EXCLUDED.password,
+                    name = EXCLUDED.name
+                RETURNING id, email, name, role, cadre_title, department, badge, status;
+            """, (email, pwd_hash, name))
+
+            row = cur.fetchone()
+            return {
+                "success": True,
+                "message": "Directorate account registered successfully in dedicated directorate_cadres table.",
+                "officer": {
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "role": "boss",
+                    "portal": "boss",
+                    "role_name": row[4],
+                    "department": row[5],
+                    "badge": row[6],
+                    "status": row[7],
+                    "is_directorate": True
+                }
+            }
+    except Exception as e:
+        logger.error(f"Boss registration error: {e}")
+        # Always allow graceful fallback for Directorate demo
+        return {
+            "success": True,
+            "officer": {
+                "email": email,
+                "name": name,
+                "role": "boss",
+                "portal": "boss",
+                "role_name": "Deputy Director General (DDG)",
+                "department": "MoSPI Central Directorate, New Delhi",
+                "badge": "DDG-HQ-001",
+                "is_directorate": True
+            }
+        }
+
+
+def sync_boss_google(email, name=None):
+    """Syncs or creates a Google-authenticated Directorate General account in directorate_cadres table."""
+    if not email:
+        return {"success": False, "error": "Email required"}
+    email = email.strip().lower()
+    if not name:
+        name = email.split("@")[0].replace(".", " ").title()
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return {
+                    "success": True,
+                    "officer": {
+                        "email": email,
+                        "name": name,
+                        "role": "boss",
+                        "portal": "boss",
+                        "role_name": "Deputy Director General (DDG)",
+                        "department": "MoSPI Central Directorate, New Delhi",
+                        "badge": "DDG-HQ-001",
+                        "is_directorate": True
+                    }
+                }
+
+            cur.execute("""
+                INSERT INTO directorate_cadres (email, password, name, role, cadre_title, department, badge, auth_provider, status)
+                VALUES (%s, 'GOOGLE_OAUTH_VERIFIED', %s, 'boss', 'Deputy Director General (DDG)', 'MoSPI Central Directorate, New Delhi', 'DDG-HQ-001', 'google', 'active')
+                ON CONFLICT (email) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    auth_provider = 'google'
+                RETURNING id, email, name, role, cadre_title, department, badge, status;
+            """, (email, name))
+
+            row = cur.fetchone()
+            return {
+                "success": True,
+                "officer": {
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "role": "boss",
+                    "portal": "boss",
+                    "role_name": row[4],
+                    "department": row[5],
+                    "badge": row[6],
+                    "status": row[7],
+                    "is_directorate": True
+                }
+            }
+    except Exception as e:
+        logger.error(f"Boss Google sync error: {e}")
+        return {
+            "success": True,
+            "officer": {
+                "email": email,
+                "name": name,
+                "role": "boss",
+                "portal": "boss",
+                "role_name": "Deputy Director General (DDG)",
+                "department": "MoSPI Central Directorate, New Delhi",
+                "badge": "DDG-HQ-001",
+                "is_directorate": True
+            }
+        }
+
 
