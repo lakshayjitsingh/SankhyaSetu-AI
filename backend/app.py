@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from sample_data import MOSPI_ROLES, DIAGNOSTIC_QUESTIONS, IGOT_COURSES, SAMPLE_MANUALS
 import ai_engine
+import db
 
 # Active AI generation sessions in memory
 ACTIVE_DIAGNOSTIC_SESSIONS = {}
@@ -26,7 +27,12 @@ if os.path.exists(FRONTEND_DIST):
             return send_from_directory(FRONTEND_DIST, path)
         return send_from_directory(FRONTEND_DIST, "index.html")
 
-# Pre-warm AI diagnostic and quiz caches on startup for instant <50ms responses
+# Initialize Neon Cloud PostgreSQL and pre-warm AI diagnostic & quiz caches
+try:
+    db.init_db()
+except Exception as e:
+    print("Warning during Neon DB initialization:", e)
+
 try:
     ai_engine.prewarm_all_diagnostic_caches()
     ai_engine.prewarm_all_quiz_caches()
@@ -39,8 +45,9 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "SankhyaSetu AI - MoSPI Capacity Building Engine",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "gemini_configured": bool(key and len(key.strip()) > 10),
+        "neon_db_connected": db.is_connected(),
         "cache_warm": len(getattr(ai_engine, "_DIAGNOSTIC_WARM_BUFFERS", {})) > 0 or len(getattr(ai_engine, "_DIAGNOSTIC_WARM_CACHE", {})) > 0,
         "igot_integration": "Enabled (FRAC Compliant / SCORM 2004)"
     })
@@ -289,6 +296,79 @@ def evaluate_quiz():
         "status": "Passed" if percentage >= 70 else "Needs Review",
         "results": detailed_results,
         "detailed_results": detailed_results
+    })
+
+# ==============================================================================
+# NEON CLOUD POSTGRESQL DATABASE PERSISTENCE ENDPOINTS
+# ==============================================================================
+
+@app.route("/api/db/sync-user", methods=["POST"])
+def sync_user():
+    """Syncs an officer's profile to Neon PostgreSQL upon login or registration."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    name = data.get("name")
+    role_id = data.get("role_id", "field_investigator_nsso")
+    role_name = data.get("role_name")
+    department = data.get("department")
+    auth_provider = data.get("auth_provider", "manual")
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    officer = db.upsert_officer(email, name, role_id, role_name, department, auth_provider)
+    return jsonify({
+        "success": bool(officer),
+        "officer": officer,
+        "neon_connected": db.is_connected()
+    })
+
+@app.route("/api/db/history", methods=["GET"])
+def get_user_history():
+    """Retrieves all past assessment attempts and competency scores from Neon."""
+    email = request.args.get("email")
+    if not email:
+        return jsonify({"error": "Email parameter is required"}), 400
+
+    history = db.get_officer_history(email)
+    return jsonify({
+        "success": True,
+        "history": history,
+        "count": len(history),
+        "neon_connected": db.is_connected()
+    })
+
+@app.route("/api/db/save-attempt", methods=["POST"])
+def save_attempt():
+    """Saves a completed diagnostic or quiz score directly into Neon PostgreSQL."""
+    data = request.get_json() or {}
+    email = data.get("email") or data.get("officer_email")
+    role_id = data.get("role_id", "field_investigator_nsso")
+    score_achieved = data.get("score_achieved", data.get("score", 0))
+    passed = data.get("passed", score_achieved >= 70)
+    radar_scores = data.get("radar_scores", data.get("competencies", {}))
+    detailed_answers = data.get("detailed_answers", [])
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    attempt = db.save_assessment_attempt(
+        email, role_id, score_achieved, passed, radar_scores, detailed_answers
+    )
+    return jsonify({
+        "success": bool(attempt),
+        "attempt": attempt,
+        "neon_connected": db.is_connected()
+    })
+
+@app.route("/api/db/stats", methods=["GET"])
+def get_db_stats():
+    """Returns nationwide cadre metrics for MoSPI leadership analytics."""
+    stats = db.get_all_officers_stats()
+    return jsonify({
+        "success": bool(stats),
+        "stats": stats or {"total_officers": 0, "total_attempts": 0, "national_avg_score": 0.0},
+        "neon_connected": db.is_connected()
     })
 
 if __name__ == "__main__":

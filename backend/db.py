@@ -1,0 +1,297 @@
+import os
+import json
+import logging
+from contextlib import contextmanager
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+logger = logging.getLogger("sankhyasetu.db")
+
+def resolve_database_url():
+    url = os.environ.get("DATABASE_URL", "")
+    if not url:
+        for p in [os.path.join(os.path.dirname(__file__), ".env"), os.path.join(os.path.dirname(__file__), "..", ".env")]:
+            if os.path.exists(p):
+                try:
+                    with open(p, "r", encoding="utf-8-sig") as f:
+                        for line in f:
+                            if line.strip().startswith("DATABASE_URL="):
+                                url = line.split("DATABASE_URL=", 1)[1].strip().strip('"').strip("'")
+                                break
+                    if url:
+                        break
+                except Exception:
+                    pass
+    return url
+
+DATABASE_URL = resolve_database_url()
+
+# Lazy-loaded connection pool
+_POOL = None
+
+def get_connection_pool():
+    global _POOL
+    if _POOL is not None:
+        return _POOL
+    
+    db_url = resolve_database_url()
+    if not db_url:
+        logger.warning("DATABASE_URL not set in environment. Running in offline/mock database mode.")
+        return None
+        
+    try:
+        import psycopg2.pool
+        # Neon PostgreSQL pooled connection
+        _POOL = psycopg2.pool.SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=db_url,
+            sslmode="require"
+        )
+        logger.info("Neon PostgreSQL connection pool initialized successfully.")
+        return _POOL
+    except Exception as e:
+        logger.error(f"Failed to initialize Neon PostgreSQL connection pool: {e}")
+        return None
+
+
+@contextmanager
+def get_db_cursor(commit=False):
+    pool = get_connection_pool()
+    if pool is None:
+        yield None
+        return
+
+    conn = None
+    try:
+        conn = pool.getconn()
+        with conn.cursor() as cur:
+            yield cur
+        if commit:
+            conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logger.error(f"Database error during transaction: {e}")
+        raise e
+    finally:
+        if conn and pool:
+            pool.putconn(conn)
+
+
+def is_connected():
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return False
+            cur.execute("SELECT 1;")
+            row = cur.fetchone()
+            return bool(row and row[0] == 1)
+    except Exception:
+        return False
+
+
+def init_db():
+    """Initializes schema and tables in Neon PostgreSQL with zero-downtime IF NOT EXISTS."""
+    logger.info("Verifying and initializing Neon database tables...")
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                logger.warning("Database unavailable, skipping table creation.")
+                return False
+
+            # 1. Officers Table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS officers (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    role_id VARCHAR(100) NOT NULL,
+                    role_name VARCHAR(255),
+                    department VARCHAR(255),
+                    auth_provider VARCHAR(50) DEFAULT 'manual',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # 2. Assessment Attempts Table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS assessment_attempts (
+                    id SERIAL PRIMARY KEY,
+                    officer_email VARCHAR(255) NOT NULL,
+                    role_id VARCHAR(100) NOT NULL,
+                    score_achieved INT NOT NULL,
+                    passed BOOLEAN NOT NULL,
+                    radar_scores JSONB NOT NULL,
+                    detailed_answers JSONB,
+                    attempt_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # 3. Create Performance Indexes
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_assessment_officer_email 
+                ON assessment_attempts(officer_email);
+            """)
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_assessment_timestamp 
+                ON assessment_attempts(attempt_timestamp DESC);
+            """)
+            logger.info("Neon database tables and indexes verified successfully.")
+            return True
+    except Exception as e:
+        logger.error(f"Error during init_db: {e}")
+        return False
+
+
+def upsert_officer(email, name, role_id, role_name=None, department=None, auth_provider="manual"):
+    """Inserts or updates an officer in the database using parameterized queries."""
+    if not email:
+        return None
+
+    email = email.strip().lower()
+    name = name.strip() if name else email.split("@")[0]
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return None
+
+            cur.execute("""
+                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, last_active)
+                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (email) 
+                DO UPDATE SET 
+                    name = EXCLUDED.name,
+                    role_id = EXCLUDED.role_id,
+                    role_name = COALESCE(EXCLUDED.role_name, officers.role_name),
+                    department = COALESCE(EXCLUDED.department, officers.department),
+                    auth_provider = COALESCE(EXCLUDED.auth_provider, officers.auth_provider),
+                    last_active = CURRENT_TIMESTAMP
+                RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active;
+            """, (email, name, role_id, role_name, department, auth_provider))
+            
+            row = cur.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "role_id": row[3],
+                    "role_name": row[4],
+                    "department": row[5],
+                    "auth_provider": row[6],
+                    "created_at": row[7].isoformat() if row[7] else None,
+                    "last_active": row[8].isoformat() if row[8] else None
+                }
+    except Exception as e:
+        logger.error(f"Error upserting officer {email}: {e}")
+    return None
+
+
+def save_assessment_attempt(officer_email, role_id, score_achieved, passed, radar_scores, detailed_answers=None):
+    """Saves a completed assessment attempt and 5-axis FRAC radar score to Neon."""
+    if not officer_email:
+        return None
+
+    officer_email = officer_email.strip().lower()
+    radar_json = json.dumps(radar_scores or {})
+    answers_json = json.dumps(detailed_answers or [])
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return None
+
+            cur.execute("""
+                INSERT INTO assessment_attempts (
+                    officer_email, role_id, score_achieved, passed, radar_scores, detailed_answers, attempt_timestamp
+                )
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, CURRENT_TIMESTAMP)
+                RETURNING id, officer_email, role_id, score_achieved, passed, radar_scores, attempt_timestamp;
+            """, (officer_email, role_id, int(score_achieved), bool(passed), radar_json, answers_json))
+
+            row = cur.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "officer_email": row[1],
+                    "role_id": row[2],
+                    "score_achieved": row[3],
+                    "passed": row[4],
+                    "radar_scores": row[5],
+                    "attempt_timestamp": row[6].isoformat() if row[6] else None
+                }
+    except Exception as e:
+        logger.error(f"Error saving attempt for {officer_email}: {e}")
+    return None
+
+
+def get_officer_history(officer_email):
+    """Retrieves all past assessment attempts and competency scores for an officer."""
+    if not officer_email:
+        return []
+
+    officer_email = officer_email.strip().lower()
+
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return []
+
+            cur.execute("""
+                SELECT id, role_id, score_achieved, passed, radar_scores, detailed_answers, attempt_timestamp
+                FROM assessment_attempts
+                WHERE officer_email = %s
+                ORDER BY attempt_timestamp ASC;
+            """, (officer_email,))
+
+            rows = cur.fetchall()
+            history = []
+            for row in rows:
+                history.append({
+                    "id": row[0],
+                    "role_id": row[1],
+                    "score": row[2],
+                    "score_achieved": row[2],
+                    "passed": row[3],
+                    "radar_scores": row[4],
+                    "competencies": row[4],
+                    "detailed_answers": row[5],
+                    "date": row[6].strftime("%d %b %Y, %I:%M %p") if row[6] else "Recent",
+                    "timestamp": row[6].isoformat() if row[6] else None
+                })
+            return history
+    except Exception as e:
+        logger.error(f"Error retrieving history for {officer_email}: {e}")
+    return []
+
+
+def get_all_officers_stats():
+    """Aggregates nationwide cadre statistics for the MoSPI Leadership Heatmap."""
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return None
+
+            cur.execute("SELECT COUNT(DISTINCT email) FROM officers;")
+            total_officers = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*), AVG(score_achieved) FROM assessment_attempts;")
+            attempt_row = cur.fetchone()
+            total_attempts = attempt_row[0]
+            avg_score = float(attempt_row[1]) if attempt_row[1] is not None else 0.0
+
+            return {
+                "total_officers": total_officers,
+                "total_attempts": total_attempts,
+                "national_avg_score": round(avg_score, 1)
+            }
+    except Exception as e:
+        logger.error(f"Error fetching stats: {e}")
+    return None

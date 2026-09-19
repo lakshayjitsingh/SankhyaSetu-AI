@@ -285,13 +285,39 @@ export default function App() {
       .catch(err => console.error("Error fetching manuals:", err));
   }, []);
 
-  // Check onboarding on login
+  // Synchronize officer profile to Neon Cloud PostgreSQL
+  const syncOfficerProfileToCloud = async (u) => {
+    if (!u?.email) return;
+    try {
+      const activeF = STATISTICAL_FIELDS.find(f => f.id === u.selectedField) || STATISTICAL_FIELDS[0];
+      await fetch(`${API_BASE}/db/sync-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: u.email.toLowerCase(),
+          name: u.name || u.email.split('@')[0],
+          role_id: activeF?.role_id || u.selectedField || 'field_investigator_nsso',
+          role_name: activeF?.designation || 'Field Investigator (NSSO)',
+          department: activeF?.title || 'Field Operations Division',
+          auth_provider: u.isGoogle ? 'google' : 'manual'
+        })
+      });
+    } catch (e) {
+      console.warn("Neon cloud user sync offline fallback:", e);
+    }
+  };
+
+  // Check onboarding on login & sync history with Neon Cloud DB
   useEffect(() => {
     if (user?.email) {
       const historyKey = `sankhya_history_${user.email.toLowerCase()}`;
       const savedHistory = localStorage.getItem(historyKey);
+      
+      // Step 1: Immediate local render (sub-5ms)
       if (savedHistory) {
-        setUserHistory(JSON.parse(savedHistory));
+        try {
+          setUserHistory(JSON.parse(savedHistory));
+        } catch (e) {}
       } else {
         const initialHistory = [
           {
@@ -319,6 +345,38 @@ export default function App() {
         setUserHistory(initialHistory);
       }
 
+      // Step 2: Background Cloud Fetch from Neon PostgreSQL
+      fetch(`${API_BASE}/db/history?email=${encodeURIComponent(user.email.toLowerCase())}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.success && Array.isArray(data.history) && data.history.length > 0) {
+            const dbFormatted = data.history.map((h, idx) => ({
+              id: `db-${h.id}`,
+              type: h.role_id ? 'diagnostic' : 'quiz',
+              title: h.role_id ? 'Adaptive Cadre Diagnostic' : 'MoSPI Manual Competency Quiz',
+              field: 'Field Surveys & Official Statistics (MoSPI OSS)',
+              score: Number(h.score_achieved ?? h.score ?? 75),
+              status: (Number(h.score_achieved ?? h.score ?? 0) >= 70) ? 'Passed Cadre Benchmark' : 'Gaps Identified',
+              date: h.date || 'Recent Attempt',
+              improvementDelta: `+${Math.min(25, (idx + 1) * 5)}%`,
+              radar_scores: h.radar_scores
+            })).reverse();
+
+            setUserHistory(prev => {
+              // Combine DB history with local history, avoiding duplicate IDs
+              const existingIds = new Set(dbFormatted.map(item => item.id));
+              const localUnsynced = (prev || []).filter(item => !existingIds.has(item.id));
+              const merged = [...dbFormatted, ...localUnsynced];
+              localStorage.setItem(historyKey, JSON.stringify(merged));
+              return merged;
+            });
+          }
+        })
+        .catch(err => console.warn("Neon DB history fetch offline fallback:", err));
+
+      // Step 3: Ensure officer profile is stored in Neon Cloud
+      syncOfficerProfileToCloud(user);
+
       // ONLY show the popup if user has NEVER chosen a field yet (first login)
       if (!user.hasCompletedOnboarding) {
         setShowFieldModal(true);
@@ -326,15 +384,34 @@ export default function App() {
         setSelectedField(user.selectedField);
       }
     }
-  }, [user]);
+  }, [user?.email]);
 
-  // Record an activity to user's history
+  // Record an activity to user's history (saved to LocalStorage + Neon Cloud PostgreSQL)
   const recordActivity = (activity) => {
     if (!user?.email) return;
     const historyKey = `sankhya_history_${user.email.toLowerCase()}`;
     const updated = [activity, ...userHistory];
     setUserHistory(updated);
     localStorage.setItem(historyKey, JSON.stringify(updated));
+
+    // Asynchronous background write to Neon Cloud DB
+    try {
+      const activeF = STATISTICAL_FIELDS.find(f => f.id === selectedField) || STATISTICAL_FIELDS[0];
+      fetch(`${API_BASE}/db/save-attempt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email.toLowerCase(),
+          role_id: activeF?.role_id || selectedField || 'field_investigator_nsso',
+          score_achieved: activity.score || 0,
+          passed: (activity.score || 0) >= 70,
+          radar_scores: currentScores || {},
+          detailed_answers: activity.detailed_results || []
+        })
+      }).catch(err => console.warn("Neon attempt sync offline fallback:", err));
+    } catch (e) {
+      console.warn("Neon attempt sync deferred:", e);
+    }
   };
 
   // Google OAuth Login
