@@ -4,7 +4,7 @@ import {
   ShieldCheck, ShieldAlert, Clock, BookOpen, LogOut, Sparkles, User, 
   ArrowLeft, Check, ChevronRight, X, ExternalLink, Settings, Key,
   Home, BarChart3, FileText, Award, TrendingUp, RefreshCw, Layers, CheckCircle,
-  Menu
+  Menu, Eye, EyeOff
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
@@ -266,6 +266,7 @@ export default function App() {
   const [directPassword, setDirectPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Per-User Activity History & Improvement Tracking
   const [userHistory, setUserHistory] = useState([]);
@@ -985,17 +986,31 @@ export default function App() {
                   <label className="text-xs font-bold text-slate-900 block mb-1.5">
                     {isSignUp ? "Create password (min. 6 characters)" : "Password"}
                   </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={directPassword}
-                    onChange={(e) => {
-                      setDirectPassword(e.target.value);
-                      if (authError) setAuthError('');
-                    }}
-                    className="w-full px-4 py-3 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={directPassword}
+                      onChange={(e) => {
+                        setDirectPassword(e.target.value);
+                        if (authError) setAuthError('');
+                      }}
+                      className="w-full px-4 py-3 pr-11 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <button

@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from contextlib import contextmanager
+from werkzeug.security import generate_password_hash, check_password_hash
 
 try:
     from dotenv import load_dotenv
@@ -172,12 +173,17 @@ def init_db():
 
 
 def upsert_officer(email, name, role_id, role_name=None, department=None, auth_provider="manual", password=None):
-    """Inserts or updates an officer in the database using parameterized queries."""
+    """Inserts or updates an officer in the database using parameterized queries and secure hashing."""
     if not email:
         return None
 
     email = email.strip().lower()
     name = name.strip() if name else email.split("@")[0]
+
+    # If password is provided and not already a cryptographic hash, hash it securely
+    hashed_password = password
+    if password and not password.startswith(("scrypt:", "pbkdf2:", "bcrypt:", "GOOGLE_")):
+        hashed_password = generate_password_hash(password)
 
     try:
         with get_db_cursor(commit=True) as cur:
@@ -196,8 +202,8 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
                     auth_provider = COALESCE(EXCLUDED.auth_provider, officers.auth_provider),
                     password = COALESCE(EXCLUDED.password, officers.password),
                     last_active = CURRENT_TIMESTAMP
-                RETURNING id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active;
-            """, (email, name, role_id, role_name, department, auth_provider, password))
+                RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active;
+            """, (email, name, role_id, role_name, department, auth_provider, hashed_password))
             
             row = cur.fetchone()
             if row:
@@ -209,9 +215,8 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
                     "role_name": row[4],
                     "department": row[5],
                     "auth_provider": row[6],
-                    "password": row[7],
-                    "created_at": row[8].isoformat() if row[8] else None,
-                    "last_active": row[9].isoformat() if row[9] else None
+                    "created_at": row[7].isoformat() if row[7] else None,
+                    "last_active": row[8].isoformat() if row[8] else None
                 }
     except Exception as e:
         logger.error(f"Error upserting officer {email}: {e}")
@@ -219,7 +224,7 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
 
 
 def register_officer(email, password, name, role_id="field_investigator_nsso", role_name=None, department=None):
-    """Registers a new officer directly in Neon Cloud PostgreSQL with duplicate prevention."""
+    """Registers a new officer directly in Neon Cloud PostgreSQL with cryptographic salted scrypt hashing."""
     if not email or not password:
         return {"success": False, "error": "Email and password are required"}
 
@@ -237,11 +242,14 @@ def register_officer(email, password, name, role_id="field_investigator_nsso", r
             if cur.fetchone():
                 return {"success": False, "error": "An account with this email is already registered. Please Sign In."}
 
+            # Cryptographically hash password using salted scrypt
+            hashed_password = generate_password_hash(password)
+
             cur.execute("""
                 INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, last_active)
                 VALUES (%s, %s, %s, %s, %s, 'manual', %s, CURRENT_TIMESTAMP)
-                RETURNING id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active;
-            """, (email, name, role_id, role_name or "Field Investigator (NSSO)", department or "Field Operations Division", password))
+                RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active;
+            """, (email, name, role_id, role_name or "Field Investigator (NSSO)", department or "Field Operations Division", hashed_password))
 
             row = cur.fetchone()
             if row:
@@ -255,9 +263,8 @@ def register_officer(email, password, name, role_id="field_investigator_nsso", r
                         "role_name": row[4],
                         "department": row[5],
                         "auth_provider": row[6],
-                        "password": row[7],
-                        "created_at": row[8].isoformat() if row[8] else None,
-                        "last_active": row[9].isoformat() if row[9] else None
+                        "created_at": row[7].isoformat() if row[7] else None,
+                        "last_active": row[8].isoformat() if row[8] else None
                     }
                 }
     except Exception as e:
@@ -267,7 +274,7 @@ def register_officer(email, password, name, role_id="field_investigator_nsso", r
 
 
 def verify_officer_login(email, password):
-    """Authenticates an officer's email and password against Neon Cloud PostgreSQL."""
+    """Authenticates an officer's credentials against Neon Cloud PostgreSQL using secure hash checking and auto-upgrade."""
     if not email or not password:
         return {"success": False, "error": "Email and password are required"}
 
@@ -290,11 +297,28 @@ def verify_officer_login(email, password):
                 return {"success": False, "error": "No account found with this email. Please Sign Up first."}
 
             db_password = row[7]
-            if db_password != password:
+            is_valid = False
+            needs_hash_upgrade = False
+
+            if not db_password:
+                is_valid = False
+            elif db_password.startswith(("scrypt:", "pbkdf2:", "bcrypt:")):
+                is_valid = check_password_hash(db_password, password)
+            else:
+                # Legacy plain-text password match (e.g. initial demo seed)
+                if db_password == password:
+                    is_valid = True
+                    needs_hash_upgrade = True
+
+            if not is_valid:
                 return {"success": False, "error": "Incorrect password. Please try again."}
 
-            # Update last_active
-            cur.execute("UPDATE officers SET last_active = CURRENT_TIMESTAMP WHERE email = %s;", (email,))
+            # If legacy plain text matched, seamlessly upgrade in Neon to modern scrypt hash
+            if needs_hash_upgrade:
+                new_hash = generate_password_hash(password)
+                cur.execute("UPDATE officers SET password = %s, last_active = CURRENT_TIMESTAMP WHERE email = %s;", (new_hash, email))
+            else:
+                cur.execute("UPDATE officers SET last_active = CURRENT_TIMESTAMP WHERE email = %s;", (email,))
 
             return {
                 "success": True,
@@ -306,7 +330,6 @@ def verify_officer_login(email, password):
                     "role_name": row[4],
                     "department": row[5],
                     "auth_provider": row[6],
-                    "password": row[7],
                     "created_at": row[8].isoformat() if row[8] else None,
                     "last_active": row[9].isoformat() if row[9] else None
                 }
