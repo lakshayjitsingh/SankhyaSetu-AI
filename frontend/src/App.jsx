@@ -281,6 +281,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Supervisory Cadre Form States (Cadre 2)
+  const [isSupervisorSignUp, setIsSupervisorSignUp] = useState(false);
   const [supervisorEmail, setSupervisorEmail] = useState('');
   const [supervisorPassword, setSupervisorPassword] = useState('');
   const [supervisorAuthError, setSupervisorAuthError] = useState('');
@@ -734,7 +735,74 @@ export default function App() {
     }
   };
 
-  // Dedicated Supervisor Portal Login (Cadre 2)
+  // Dedicated Supervisor Portal Login & Registration (Cadre 2)
+  const loginSupervisorWithGoogle = () => {
+    if (window.google?.accounts?.oauth2) {
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: "email profile openid",
+          callback: async (tokenResponse) => {
+            if (tokenResponse?.access_token) {
+              try {
+                const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const googleProfile = await res.json();
+                const userEmail = googleProfile.email.toLowerCase();
+                const userName = googleProfile.name || userEmail.split('@')[0];
+
+                const supervisorData = {
+                  name: userName,
+                  email: userEmail,
+                  role: 'supervisor',
+                  portal: 'supervisor',
+                  assignedField: 'survey_supervisor_asuse',
+                  badge: 'SSO-GOOGLE',
+                  department: 'Field Operations Division',
+                  loginTime: new Date().toLocaleTimeString()
+                };
+
+                setCurrentPortal('supervisor');
+                setUser(supervisorData);
+                localStorage.setItem('sankhya_user', JSON.stringify(supervisorData));
+                localStorage.setItem('sankhya_last_activity', Date.now().toString());
+                setInactivityNotice('');
+                setSupervisorEmail('');
+                setSupervisorPassword('');
+
+                // Sync to Neon PostgreSQL dedicated supervisors table
+                try {
+                  fetch(`${API_BASE}/db/auth/supervisor/sync-google`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: userEmail, name: userName })
+                  }).catch(() => {});
+                } catch (e) {}
+              } catch (fetchErr) {
+                console.error("Google supervisor error:", fetchErr);
+                setSupervisorAuthError("Failed to fetch Google profile. Please try again.");
+              }
+            } else if (tokenResponse?.error) {
+              if (tokenResponse.error === 'popup_closed_by_user' || tokenResponse.error === 'access_denied') return;
+              setSupervisorAuthError(`Google Sign-In error: ${tokenResponse.error}`);
+            }
+          },
+          error_callback: (error) => {
+            if (error?.type === 'popup_closed' || error?.message?.toLowerCase().includes('cancel')) return;
+            if (error?.message) setSupervisorAuthError(error.message);
+          }
+        });
+        client.requestAccessToken({ prompt: 'consent' });
+      } catch (err) {
+        console.error("Supervisor OAuth init error:", err);
+        setSupervisorAuthError("Could not launch Google Sign-In.");
+      }
+    } else {
+      setSupervisorAuthError("Google Identity Services loading. Please wait a moment.");
+    }
+  };
+
   const handleSupervisorAuth = async (e) => {
     e.preventDefault();
     setSupervisorAuthError('');
@@ -746,47 +814,95 @@ export default function App() {
       return;
     }
 
+    if (trimmedPass.length < 6) {
+      setSupervisorAuthError('Password must be at least 6 characters.');
+      return;
+    }
+
     setIsSupervisorAuthenticating(true);
     try {
-      const response = await fetch(`${API_BASE}/db/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
-      });
+      if (isSupervisorSignUp) {
+        // Register directly into dedicated supervisors table
+        const derivedName = trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase();
+        const response = await fetch(`${API_BASE}/db/auth/supervisor/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: trimmedEmail,
+            password: trimmedPass,
+            name: derivedName,
+            field_id: 'survey_supervisor_asuse',
+            department: 'Field Operations Division'
+          })
+        });
 
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        setSupervisorAuthError(data.error || 'Invalid supervisor credentials.');
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setSupervisorAuthError(data.error || 'Supervisor registration failed. Please try again.');
+          setIsSupervisorAuthenticating(false);
+          return;
+        }
+
+        const supervisorData = {
+          name: data.officer?.name || derivedName,
+          email: trimmedEmail,
+          role: 'supervisor',
+          portal: 'supervisor',
+          assignedField: data.officer?.role_id || 'survey_supervisor_asuse',
+          badge: data.officer?.badge || 'SSO-CADRE',
+          department: data.officer?.department || 'Field Operations Division',
+          loginTime: new Date().toLocaleTimeString()
+        };
+        setCurrentPortal('supervisor');
+        setUser(supervisorData);
+        localStorage.setItem('sankhya_user', JSON.stringify(supervisorData));
+        localStorage.setItem('sankhya_last_activity', Date.now().toString());
+        setInactivityNotice('');
+        setSupervisorPassword('');
+        setSupervisorEmail('');
         setIsSupervisorAuthenticating(false);
-        return;
-      }
+      } else {
+        // Direct Login against dedicated supervisors table
+        const response = await fetch(`${API_BASE}/db/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
+        });
 
-      const officer = data.officer;
-      if (officer?.role !== 'supervisor' && officer?.portal !== 'supervisor' && !trimmedEmail.startsWith('supervisor')) {
-        setSupervisorAuthError('Account is not authorized for Supervisory Cadre. Access requires clearance from Directorate General.');
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setSupervisorAuthError(data.error || 'Invalid supervisor credentials.');
+          setIsSupervisorAuthenticating(false);
+          return;
+        }
+
+        const officer = data.officer;
+        if (officer?.role !== 'supervisor' && officer?.portal !== 'supervisor' && !trimmedEmail.startsWith('supervisor')) {
+          setSupervisorAuthError('Account is not authorized for Supervisory Cadre.');
+          setIsSupervisorAuthenticating(false);
+          return;
+        }
+
+        setCurrentPortal('supervisor');
+        const assignedField = officer?.role_id || 'survey_supervisor_asuse';
+        const supervisorData = {
+          name: officer?.name || 'Field Squad Lead',
+          email: trimmedEmail,
+          role: 'supervisor',
+          portal: 'supervisor',
+          assignedField: assignedField,
+          badge: officer?.badge || 'SSO-DEL-101',
+          department: officer?.department || 'Field Operations Division',
+          loginTime: new Date().toLocaleTimeString()
+        };
+        setUser(supervisorData);
+        localStorage.setItem('sankhya_user', JSON.stringify(supervisorData));
+        localStorage.setItem('sankhya_last_activity', Date.now().toString());
+        setInactivityNotice('');
+        setSupervisorPassword('');
+        setSupervisorEmail('');
         setIsSupervisorAuthenticating(false);
-        return;
       }
-
-      setCurrentPortal('supervisor');
-      const assignedField = officer?.role_id || 'survey_supervisor_asuse';
-      const supervisorData = {
-        name: officer?.name || 'Field Squad Lead',
-        email: trimmedEmail,
-        role: 'supervisor',
-        portal: 'supervisor',
-        assignedField: assignedField,
-        badge: officer?.badge || 'SSO-DEL-101',
-        department: officer?.department || 'Field Operations Division',
-        loginTime: new Date().toLocaleTimeString()
-      };
-      setUser(supervisorData);
-      localStorage.setItem('sankhya_user', JSON.stringify(supervisorData));
-      localStorage.setItem('sankhya_last_activity', Date.now().toString());
-      setInactivityNotice('');
-      setSupervisorPassword('');
-      setSupervisorEmail('');
-      setIsSupervisorAuthenticating(false);
     } catch (err) {
       console.error("Supervisor auth error:", err);
       setSupervisorAuthError('Network error connecting to authentication server.');
@@ -1601,9 +1717,61 @@ export default function App() {
                     {isSupervisorAuthenticating && (
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     )}
-                    {isSupervisorAuthenticating ? "Verifying Cadre..." : "Sign In to Supervisory Console"}
+                    {isSupervisorAuthenticating 
+                      ? (isSupervisorSignUp ? "Creating..." : "Verifying Cadre...")
+                      : (isSupervisorSignUp ? "Create Account & Continue" : "Sign In to Supervisory Console")
+                    }
                   </button>
                 </form>
+
+                {/* Divider */}
+                <div className="relative my-2 flex items-center justify-center">
+                  <div className="w-full border-t border-[#ebdcc8]"></div>
+                  <span className="absolute bg-white px-2.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                    or
+                  </span>
+                </div>
+
+                {/* Google Sign In */}
+                <button
+                  type="button"
+                  onClick={loginSupervisorWithGoogle}
+                  className="w-full py-2 px-3 bg-white hover:bg-[#faf5ec] text-slate-900 border border-[#ebdcc8] hover:border-[#ea8b21]/60 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                  </svg>
+                  <span>Sign in with Google</span>
+                </button>
+
+                <div className="text-center text-[11px] text-slate-900 font-medium pt-0.5">
+                  {isSupervisorSignUp ? (
+                    <p>
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setIsSupervisorSignUp(false); setSupervisorAuthError(''); }}
+                        className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
+                      >
+                        Sign in
+                      </button>
+                    </p>
+                  ) : (
+                    <p>
+                      Don't have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setIsSupervisorSignUp(true); setSupervisorAuthError(''); }}
+                        className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
+                      >
+                        Sign up
+                      </button>
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">

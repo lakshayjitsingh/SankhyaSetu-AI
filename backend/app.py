@@ -339,6 +339,33 @@ def auth_register():
     return jsonify(result), status_code
 
 
+@app.route("/api/db/auth/supervisor/register", methods=["POST"])
+def auth_supervisor_register():
+    """Registers a new supervisor account in the dedicated supervisors table in Neon PostgreSQL."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    password = data.get("password")
+    name = data.get("name")
+    field_id = data.get("field_id", "survey_supervisor_asuse")
+    department = data.get("department", "Field Operations Division")
+
+    result = db.register_supervisor(email=email, password=password, name=name, field_id=field_id, department=department)
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/db/auth/supervisor/sync-google", methods=["POST"])
+def auth_supervisor_sync_google():
+    """Syncs a Google-authenticated supervisor into the dedicated supervisors table."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    name = data.get("name")
+
+    result = db.sync_supervisor_google(email=email, name=name)
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
 @app.route("/api/db/auth/login", methods=["POST"])
 def auth_login():
     """Verifies officer credentials directly against Neon Cloud PostgreSQL."""
