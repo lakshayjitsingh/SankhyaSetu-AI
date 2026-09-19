@@ -96,7 +96,6 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
 
   // Change Password Modal States
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [passEmailInput, setPassEmailInput] = useState('');
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
   const [confirmPassInput, setConfirmPassInput] = useState('');
@@ -195,7 +194,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
 
     setIsSubmittingChangePass(true);
 
-    const bossEmail = (passEmailInput || activeBoss?.email || 'boss@gmail.com').trim().toLowerCase();
+    const bossEmail = (activeBoss?.email || 'boss@gmail.com').trim().toLowerCase();
 
     try {
       const res = await fetch(`${API_BASE}/db/auth/change-password`, {
@@ -463,7 +462,6 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
           <button
             onClick={() => {
               setShowChangePasswordModal(true);
-              setPassEmailInput(activeBoss?.email || 'boss@gmail.com');
               setChangePassError('');
               setChangePassSuccess('');
               setCurrentPassInput('');
@@ -1097,21 +1095,6 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
             )}
 
             <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-950 block mb-1">Directorate Account Email</label>
-                <input
-                  type="email"
-                  required
-                  value={passEmailInput}
-                  onChange={(e) => {
-                    setPassEmailInput(e.target.value);
-                    if (changePassError) setChangePassError('');
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-950 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all font-semibold"
-                  placeholder="boss@gmail.com"
-                />
-              </div>
-
               <div>
                 <label className="text-xs font-bold text-slate-950 block mb-1">Current Password</label>
                 <div className="relative">
