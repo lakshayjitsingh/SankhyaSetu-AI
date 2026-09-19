@@ -446,6 +446,58 @@ def change_officer_password(email, current_password, new_password):
         return {"success": False, "error": str(e)}
 
 
+def reset_officer_password_with_otp(email, new_password):
+    """Securely resets an officer's password in Neon Cloud PostgreSQL after verified OTP.
+    Blocks Google OAuth accounts and updates the password with salted scrypt hashing."""
+    if not email or not new_password:
+        return {"success": False, "error": "Email and new password are required."}
+
+    email = email.strip().lower()
+    new_password = new_password.strip()
+
+    if len(new_password) < 6:
+        return {"success": False, "error": "New password must be at least 6 characters."}
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return {"success": False, "error": "Database unavailable."}
+
+            cur.execute("""
+                SELECT id, email, auth_provider
+                FROM officers
+                WHERE email = %s;
+            """, (email,))
+
+            row = cur.fetchone()
+            if not row:
+                return {"success": False, "error": "Officer account not found."}
+
+            auth_provider = row[2]
+            if auth_provider == "google":
+                return {
+                    "success": False,
+                    "error": "This account is signed in with Google OAuth. Please sign in using Google."
+                }
+
+            # Hash new password with salted scrypt and update in Neon PostgreSQL
+            new_hash = generate_password_hash(new_password)
+            cur.execute("""
+                UPDATE officers
+                SET password = %s, last_active = CURRENT_TIMESTAMP
+                WHERE email = %s;
+            """, (new_hash, email))
+
+            logger.info(f"Password reset successfully via verified OTP for officer {email}")
+            return {
+                "success": True,
+                "message": "Password reset successfully. You can now log in."
+            }
+    except Exception as e:
+        logger.error(f"Error resetting password for {email}: {e}")
+        return {"success": False, "error": str(e)}
+
+
 def save_assessment_attempt(officer_email, role_id, score_achieved, passed, radar_scores, detailed_answers=None):
     """Saves a completed assessment attempt and 5-axis FRAC radar score to Neon."""
     if not officer_email:

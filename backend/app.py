@@ -2,6 +2,8 @@ import fitz
 import os
 import json
 import uuid
+import time
+import secrets
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from sample_data import MOSPI_ROLES, DIAGNOSTIC_QUESTIONS, IGOT_COURSES, SAMPLE_MANUALS
@@ -11,6 +13,7 @@ import db
 # Active AI generation sessions in memory
 ACTIVE_DIAGNOSTIC_SESSIONS = {}
 ACTIVE_QUIZ_SESSIONS = {}
+ACTIVE_PASSWORD_RESET_OTPS = {}
 
 FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 
@@ -370,6 +373,86 @@ def auth_change_password():
     )
     status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
+
+
+@app.route("/api/db/auth/forgot-password/send-otp", methods=["POST"])
+def auth_forgot_password_send_otp():
+    """Generates and dispatches a 6-digit OTP for officer password recovery.
+    Validates user exists in Neon PostgreSQL and is not a Google OAuth account."""
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"success": False, "error": "Please enter your registered email address."}), 400
+
+    # Verify officer exists in Neon PostgreSQL
+    try:
+        with db.get_db_cursor() as cur:
+            if cur is None:
+                return jsonify({"success": False, "error": "Database unavailable."}), 500
+
+            cur.execute("SELECT id, name, auth_provider FROM officers WHERE email = %s;", (email,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"success": False, "error": "No MoSPI officer account found with this email. Please check your email or sign up."}), 404
+
+            auth_provider = row[2]
+            if auth_provider == "google":
+                return jsonify({
+                    "success": False,
+                    "error": "This account is authenticated via Google OAuth. Please click 'Sign in with Google' on the login screen."
+                }), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Database query error: {e}"}), 500
+
+    # Generate 6-digit cryptographic OTP (valid for 10 minutes)
+    otp = str(secrets.randbelow(900000) + 100000)
+    expires_at = time.time() + 600
+
+    ACTIVE_PASSWORD_RESET_OTPS[email] = {
+        "otp": otp,
+        "expires_at": expires_at
+    }
+
+    return jsonify({
+        "success": True,
+        "message": f"Verification OTP generated for {email}.",
+        "demo_otp": otp,
+        "expires_in_minutes": 10
+    })
+
+
+@app.route("/api/db/auth/forgot-password/verify-reset", methods=["POST"])
+def auth_forgot_password_verify_reset():
+    """Verifies OTP and securely updates officer password in Neon Cloud PostgreSQL with salted scrypt."""
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    entered_otp = (data.get("otp") or "").strip()
+    new_password = (data.get("new_password") or "").strip()
+
+    if not email or not entered_otp or not new_password:
+        return jsonify({"success": False, "error": "Email, OTP, and new password are required."}), 400
+
+    session = ACTIVE_PASSWORD_RESET_OTPS.get(email)
+    if not session:
+        return jsonify({"success": False, "error": "No active OTP request found for this email. Please click 'Send Verification OTP' first."}), 400
+
+    if time.time() > session["expires_at"]:
+        ACTIVE_PASSWORD_RESET_OTPS.pop(email, None)
+        return jsonify({"success": False, "error": "OTP has expired (valid for 10 minutes). Please request a fresh OTP."}), 400
+
+    if session["otp"] != entered_otp:
+        return jsonify({"success": False, "error": "Incorrect OTP. Please enter the valid 6-digit verification code."}), 400
+
+    # OTP is valid -> reset password in Neon PostgreSQL with salted scrypt hash
+    result = db.reset_officer_password_with_otp(email, new_password)
+    if result.get("success"):
+        ACTIVE_PASSWORD_RESET_OTPS.pop(email, None)
+        return jsonify({
+            "success": True,
+            "message": "Password successfully reset in MoSPI Secure Cloud Database. You can now sign in with your new password."
+        })
+    else:
+        return jsonify({"success": False, "error": result.get("error", "Password reset failed.")}), 400
 
 
 @app.route("/api/db/sync-user", methods=["POST"])
