@@ -2614,55 +2614,47 @@ export default function App() {
               <div>
                 <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Officer Field Setup</span>
                 <h3 className="text-xl font-black text-slate-900 mt-0.5">Select Your Statistical Working Field</h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-900 font-medium">
                   Choose your working domain so we can calibrate your diagnostic tests and iGOT training modules.
                 </p>
               </div>
               {user.hasCompletedOnboarding && (
                 <button
                   onClick={() => setShowFieldModal(false)}
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               )}
             </div>
 
-            {/* 3 Statistical Fields */}
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {/* 3 Statistical Fields (Streamlined & Compact) */}
+            <div className="space-y-3">
               {STATISTICAL_FIELDS.map(f => {
                 const isSelected = selectedField === f.id;
                 return (
                   <div
                     key={f.id}
                     onClick={() => setSelectedField(f.id)}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col gap-2.5 ${
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-4 ${
                       isSelected
-                        ? 'border-[#ea8b21] bg-[#ea8b21]/10 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                        ? 'border-[#ea8b21] bg-[#ea8b21]/10 shadow-xs ring-2 ring-[#ea8b21]/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-[#faf5ec]/40 bg-white'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                            {f.badge}
-                          </span>
-                          <span className="text-xs font-bold text-indigo-600">{f.division}</span>
-                        </div>
-                        <h4 className="font-extrabold text-sm text-slate-900">{f.title}</h4>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-900 border border-slate-300">
+                          {f.badge}
+                        </span>
+                        <span className="text-xs font-bold text-[#ea8b21]">{f.division}</span>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                        isSelected ? 'border-[#ea8b21] bg-[#ea8b21] text-white' : 'border-slate-300'
-                      }`}>
-                        {isSelected && <Check className="w-3.5 h-3.5" />}
-                      </div>
+                      <h4 className="font-extrabold text-sm sm:text-base text-slate-900">{f.title}</h4>
                     </div>
-
-                    <p className="text-xs text-slate-600 leading-relaxed">{f.summary}</p>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                      <span className="text-slate-500 font-medium">Core Competencies: {f.competencies.join(' • ')}</span>
+                    <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                      isSelected ? 'border-[#ea8b21] bg-[#ea8b21] text-white shadow-xs' : 'border-slate-300 bg-white'
+                    }`}>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </div>
                   </div>
                 );
@@ -2670,7 +2662,7 @@ export default function App() {
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <span className="text-xs text-slate-400 text-center sm:text-left">You can change this anytime from the Home page.</span>
+              <span className="text-xs text-slate-900 font-bold text-center sm:text-left">You can change this anytime from the Home page.</span>
               <button
                 onClick={() => confirmFieldSelection(selectedField)}
                 className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold shadow-md shadow-[#ea8b21]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
