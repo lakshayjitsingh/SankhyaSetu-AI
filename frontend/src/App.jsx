@@ -1221,14 +1221,14 @@ export default function App() {
                   {/* Pillar 1 - Clickable */}
                   <div 
                     onClick={() => startDiagnostic(selectedField)}
-                    className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs space-y-5 flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
+                    className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
                   >
-                    <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#faf5ec] border border-[#ebdcc8] text-[#ea8b21] flex items-center justify-center shadow-xs group-hover:bg-[#ea8b21] group-hover:text-white transition-colors">
+                    <div className="flex-1 flex flex-col">
+                      <div className="w-12 h-12 rounded-2xl bg-[#faf5ec] border border-[#ebdcc8] text-[#ea8b21] flex items-center justify-center shadow-xs group-hover:bg-[#ea8b21] group-hover:text-white transition-colors mb-4">
                         <Compass className="w-6 h-6" />
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors">
+                      <div className="space-y-2 mb-4">
+                        <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors min-h-[44px] flex items-start">
                           Role-Based Competency Diagnosis
                         </h3>
                         <p className="text-xs text-slate-900 font-medium leading-relaxed">
@@ -1236,13 +1236,13 @@ export default function App() {
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-2 mt-auto">
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">FRAC Level 1-4</span>
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Radar Analytics</span>
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs font-bold text-[#ea8b21] group-hover:text-[#d97d16]">
+                    <div className="pt-4 mt-5 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs font-bold text-[#ea8b21] group-hover:text-[#d97d16]">
                       <span>Open Skill Gap Diagnostic</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                     </div>
@@ -1253,14 +1253,14 @@ export default function App() {
                     onClick={() => {
                       setActiveTab('upload_quiz');
                     }}
-                    className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs space-y-5 flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
+                    className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
                   >
-                    <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#faf5ec] border border-[#ebdcc8] text-[#ea8b21] flex items-center justify-center shadow-xs group-hover:bg-[#ea8b21] group-hover:text-white transition-colors">
+                    <div className="flex-1 flex flex-col">
+                      <div className="w-12 h-12 rounded-2xl bg-[#faf5ec] border border-[#ebdcc8] text-[#ea8b21] flex items-center justify-center shadow-xs group-hover:bg-[#ea8b21] group-hover:text-white transition-colors mb-4">
                         <BookOpen className="w-6 h-6" />
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors">
+                      <div className="space-y-2 mb-4">
+                        <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors min-h-[44px] flex items-start">
                           Ground-Truth Citations (No Hallucinations)
                         </h3>
                         <p className="text-xs text-slate-900 font-medium leading-relaxed">
@@ -1268,13 +1268,13 @@ export default function App() {
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-2 mt-auto">
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Page Cited</span>
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Verbatim Quotes</span>
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs font-bold text-[#ea8b21] group-hover:text-[#d97d16]">
+                    <div className="pt-4 mt-5 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs font-bold text-[#ea8b21] group-hover:text-[#d97d16]">
                       <span>Open Upload & Quiz Generator</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                     </div>
@@ -1299,14 +1299,14 @@ export default function App() {
                         ]
                       });
                     }}
-                    className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs space-y-5 flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
+                    className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
                   >
-                    <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#faf5ec] border border-[#ebdcc8] text-[#ea8b21] flex items-center justify-center shadow-xs group-hover:bg-[#ea8b21] group-hover:text-white transition-colors">
+                    <div className="flex-1 flex flex-col">
+                      <div className="w-12 h-12 rounded-2xl bg-[#faf5ec] border border-[#ebdcc8] text-[#ea8b21] flex items-center justify-center shadow-xs group-hover:bg-[#ea8b21] group-hover:text-white transition-colors mb-4">
                         <Play className="w-6 h-6" />
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors">
+                      <div className="space-y-2 mb-4">
+                        <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors min-h-[44px] flex items-start">
                           iGOT Karmayogi Timestamped Learning
                         </h3>
                         <p className="text-xs text-slate-900 font-medium leading-relaxed">
@@ -1314,13 +1314,13 @@ export default function App() {
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-2 mt-auto">
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Timestamp Seeking</span>
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Micro-Modules</span>
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs font-bold text-[#ea8b21] group-hover:text-[#d97d16]">
+                    <div className="pt-4 mt-5 border-t border-[#ebdcc8]/60 flex items-center justify-between text-xs font-bold text-[#ea8b21] group-hover:text-[#d97d16]">
                       <span>Watch Karmayogi Video Clip</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                     </div>
