@@ -289,9 +289,8 @@ export default function App() {
   const [showSupervisorPassword, setShowSupervisorPassword] = useState(false);
 
   // Directorate General Form States (Cadre 3)
-  const [isBossSignUp, setIsBossSignUp] = useState(false);
-  const [bossEmail, setBossEmail] = useState('boss@gmail.com');
-  const [bossPassword, setBossPassword] = useState('123456');
+  const [bossEmail, setBossEmail] = useState('');
+  const [bossPassword, setBossPassword] = useState('');
   const [bossAuthError, setBossAuthError] = useState('');
   const [isBossAuthenticating, setIsBossAuthenticating] = useState(false);
   const [showBossPassword, setShowBossPassword] = useState(false);
@@ -342,13 +341,6 @@ export default function App() {
       .catch(err => console.error("Error fetching manuals:", err));
   }, []);
 
-  // Ensure Directorate General (Boss) credentials default to boss@gmail.com / 123456
-  useEffect(() => {
-    if (!user) {
-      if (!bossEmail) setBossEmail('boss@gmail.com');
-      if (!bossPassword) setBossPassword('123456');
-    }
-  }, [user]);
 
   // Synchronize officer profile to Neon Cloud PostgreSQL
   const syncOfficerProfileToCloud = async (u) => {
@@ -919,72 +911,7 @@ export default function App() {
     }
   };
 
-  // Dedicated Boss / Directorate General Google OAuth (Cadre 3)
-  const loginBossWithGoogle = () => {
-    if (window.google?.accounts?.oauth2) {
-      try {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: googleClientId,
-          scope: "email profile openid",
-          callback: async (tokenResponse) => {
-            if (tokenResponse?.access_token) {
-              try {
-                const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-                const googleProfile = await res.json();
-                const userEmail = googleProfile.email.toLowerCase();
-                const userName = googleProfile.name || userEmail.split('@')[0];
-
-                const bossData = {
-                  name: userName,
-                  email: userEmail,
-                  role: 'boss',
-                  portal: 'boss',
-                  badge: 'DDG-HQ-001',
-                  department: 'MoSPI Central Directorate, New Delhi',
-                  loginTime: new Date().toLocaleTimeString()
-                };
-
-                setCurrentPortal('boss');
-                setUser(bossData);
-                localStorage.setItem('sankhya_user', JSON.stringify(bossData));
-                localStorage.setItem('sankhya_last_activity', Date.now().toString());
-                setInactivityNotice('');
-
-                // Sync to Neon PostgreSQL dedicated directorate_cadres table
-                try {
-                  fetch(`${API_BASE}/db/auth/boss/sync-google`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: userEmail, name: userName })
-                  }).catch(() => {});
-                } catch (e) {}
-              } catch (fetchErr) {
-                console.error("Google boss error:", fetchErr);
-                setBossAuthError("Failed to fetch Google profile. Please try again.");
-              }
-            } else if (tokenResponse?.error) {
-              if (tokenResponse.error === 'popup_closed_by_user' || tokenResponse.error === 'access_denied') return;
-              setBossAuthError(`Google Sign-In error: ${tokenResponse.error}`);
-            }
-          },
-          error_callback: (error) => {
-            if (error?.type === 'popup_closed' || error?.message?.toLowerCase().includes('cancel')) return;
-            if (error?.message) setBossAuthError(error.message);
-          }
-        });
-        client.requestAccessToken({ prompt: 'consent' });
-      } catch (err) {
-        console.error("Boss OAuth init error:", err);
-        setBossAuthError("Could not launch Google Sign-In.");
-      }
-    } else {
-      setBossAuthError("Google Identity Services loading. Please wait a moment.");
-    }
-  };
-
-  // Dedicated Boss / Directorate General Login & Registration (Cadre 3)
+  // Dedicated Boss / Directorate General Login (Cadre 3)
   const handleBossAuth = async (e) => {
     e.preventDefault();
     setBossAuthError('');
@@ -1004,7 +931,7 @@ export default function App() {
     setIsBossAuthenticating(true);
 
     // Immediate zero-latency path for official demo Directorate credentials
-    if (!isBossSignUp && trimmedEmail === 'boss@gmail.com' && trimmedPass === '123456') {
+    if (trimmedEmail === 'boss@gmail.com' && trimmedPass === '123456') {
       setCurrentPortal('boss');
       const bossData = {
         name: 'Dr. S. K. Mukherjee',
@@ -1019,6 +946,8 @@ export default function App() {
       localStorage.setItem('sankhya_user', JSON.stringify(bossData));
       localStorage.setItem('sankhya_last_activity', Date.now().toString());
       setInactivityNotice('');
+      setBossPassword('');
+      setBossEmail('');
       setIsBossAuthenticating(false);
 
       // Async verification in background
@@ -1033,69 +962,37 @@ export default function App() {
     }
 
     try {
-      if (isBossSignUp) {
-        const derivedName = trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase();
-        const response = await fetch(`${API_BASE}/db/auth/boss/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: trimmedEmail,
-            password: trimmedPass,
-            name: derivedName
-          })
-        });
+      const response = await fetch(`${API_BASE}/db/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
+      });
 
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.success) {
-          console.warn("Backend boss registration fallback triggered");
-        }
-
-        const bossData = {
-          name: data.officer?.name || derivedName,
-          email: trimmedEmail,
-          role: 'boss',
-          portal: 'boss',
-          badge: data.officer?.badge || 'DDG-HQ-001',
-          department: data.officer?.department || 'MoSPI Central Directorate, New Delhi',
-          loginTime: new Date().toLocaleTimeString()
-        };
-        setCurrentPortal('boss');
-        setUser(bossData);
-        localStorage.setItem('sankhya_user', JSON.stringify(bossData));
-        localStorage.setItem('sankhya_last_activity', Date.now().toString());
-        setInactivityNotice('');
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setBossAuthError(data.error || 'Invalid Directorate credentials.');
         setIsBossAuthenticating(false);
-      } else {
-        const response = await fetch(`${API_BASE}/db/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
-        });
-
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          setBossAuthError(data.error || 'Invalid Directorate credentials.');
-          setIsBossAuthenticating(false);
-          return;
-        }
-
-        const officer = data.officer;
-        setCurrentPortal('boss');
-        const bossData = {
-          name: officer?.name || 'Dr. S. K. Mukherjee',
-          email: trimmedEmail,
-          role: 'boss',
-          portal: 'boss',
-          badge: officer?.badge || 'DDG-HQ-001',
-          department: officer?.department || 'MoSPI Central Directorate, New Delhi',
-          loginTime: new Date().toLocaleTimeString()
-        };
-        setUser(bossData);
-        localStorage.setItem('sankhya_user', JSON.stringify(bossData));
-        localStorage.setItem('sankhya_last_activity', Date.now().toString());
-        setInactivityNotice('');
-        setIsBossAuthenticating(false);
+        return;
       }
+
+      const officer = data.officer;
+      setCurrentPortal('boss');
+      const bossData = {
+        name: officer?.name || 'Dr. S. K. Mukherjee',
+        email: trimmedEmail,
+        role: 'boss',
+        portal: 'boss',
+        badge: officer?.badge || 'DDG-HQ-001',
+        department: officer?.department || 'MoSPI Central Directorate, New Delhi',
+        loginTime: new Date().toLocaleTimeString()
+      };
+      setUser(bossData);
+      localStorage.setItem('sankhya_user', JSON.stringify(bossData));
+      localStorage.setItem('sankhya_last_activity', Date.now().toString());
+      setInactivityNotice('');
+      setBossPassword('');
+      setBossEmail('');
+      setIsBossAuthenticating(false);
     } catch (err) {
       console.error("Boss auth error:", err);
       if (trimmedEmail === 'boss@gmail.com' && trimmedPass === '123456') {
@@ -1113,6 +1010,8 @@ export default function App() {
         localStorage.setItem('sankhya_user', JSON.stringify(bossData));
         localStorage.setItem('sankhya_last_activity', Date.now().toString());
         setInactivityNotice('');
+        setBossPassword('');
+        setBossEmail('');
       } else {
         setBossAuthError('Network error connecting to authentication server.');
       }
@@ -1302,8 +1201,8 @@ export default function App() {
     setSupervisorEmail('');
     setSupervisorPassword('');
     setSupervisorAuthError('');
-    setBossEmail('boss@gmail.com');
-    setBossPassword('123456');
+    setBossEmail('');
+    setBossPassword('');
     setBossAuthError('');
     setShowInactivityWarning(false);
     localStorage.removeItem('sankhya_user');
@@ -1966,7 +1865,7 @@ export default function App() {
                     <input
                       type="email"
                       required
-                      placeholder="boss@gmail.com"
+                      placeholder="directorate@mospi.gov.in"
                       value={bossEmail}
                       onChange={(e) => {
                         setBossEmail(e.target.value);
@@ -2010,61 +1909,9 @@ export default function App() {
                     {isBossAuthenticating && (
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     )}
-                    {isBossAuthenticating 
-                      ? (isBossSignUp ? "Creating..." : "Accessing Directorate HQ...")
-                      : (isBossSignUp ? "Create Account & Continue" : "Sign In to Directorate HQ")
-                    }
+                    {isBossAuthenticating ? "Accessing Directorate HQ..." : "Sign In to Directorate HQ"}
                   </button>
                 </form>
-
-                {/* Divider */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <div className="w-full border-t border-[#ebdcc8]"></div>
-                  <span className="absolute bg-white px-2.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    or
-                  </span>
-                </div>
-
-                {/* Google Sign In */}
-                <button
-                  type="button"
-                  onClick={loginBossWithGoogle}
-                  className="w-full py-2 px-3 bg-white hover:bg-[#faf5ec] text-slate-900 border border-[#ebdcc8] hover:border-[#ea8b21]/60 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-                  </svg>
-                  <span>Sign in with Google</span>
-                </button>
-
-                <div className="text-center text-[11px] text-slate-900 font-medium pt-0.5">
-                  {isBossSignUp ? (
-                    <p>
-                      Already have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => { setIsBossSignUp(false); setBossAuthError(''); }}
-                        className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
-                      >
-                        Sign in
-                      </button>
-                    </p>
-                  ) : (
-                    <p>
-                      Don't have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => { setIsBossSignUp(true); setBossAuthError(''); }}
-                        className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
-                      >
-                        Sign up
-                      </button>
-                    </p>
-                  )}
-                </div>
               </div>
 
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
