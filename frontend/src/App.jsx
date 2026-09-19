@@ -1175,7 +1175,7 @@ export default function App() {
                     Empowering India's Official Statistical System with AI
                   </h1>
 
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                  <p className="text-xs sm:text-sm text-slate-900 leading-relaxed font-medium">
                     <strong>SankhyaSetu AI</strong> is an intelligent learning and assessment platform engineered for the <strong>Ministry of Statistics and Programme Implementation (MoSPI)</strong>. Integrated with the <strong>iGOT Karmayogi</strong> framework, it diagnoses domain competency gaps, generates ground-truth validated survey quizzes, and delivers targeted micro-learning for statistical officers across India.
                   </p>
                 </div>
@@ -1185,7 +1185,7 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Your Working Domain</p>
+                      <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Your Working Domain</p>
                       <p className="text-xs sm:text-sm font-black text-slate-900">{activeFieldDetails.title}</p>
                     </div>
                   </div>
@@ -1210,7 +1210,7 @@ export default function App() {
                     <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                       How SankhyaSetu AI Elevates Statistical Capacity
                     </h2>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-900 font-medium mt-1">
                       Operationalizing the National Framework for Roles, Activities and Competencies (FRAC) for MoSPI.
                     </p>
                   </div>
@@ -1231,14 +1231,14 @@ export default function App() {
                         <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors">
                           Role-Based Competency Diagnosis
                         </h3>
-                        <p className="text-xs text-slate-600 leading-relaxed">
+                        <p className="text-xs text-slate-900 font-medium leading-relaxed">
                           Evaluates field investigators, statistical officers, and supervisors through targeted 5-question scenario assessments. Pinpoints gaps in sampling design, CAPI software, and non-response protocols.
                         </p>
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-700 border border-[#ebdcc8]">FRAC Level 1-4</span>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-700 border border-[#ebdcc8]">Radar Analytics</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">FRAC Level 1-4</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Radar Analytics</span>
                       </div>
                     </div>
 
@@ -1263,14 +1263,14 @@ export default function App() {
                         <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors">
                           Ground-Truth Citations (No Hallucinations)
                         </h3>
-                        <p className="text-xs text-slate-600 leading-relaxed">
+                        <p className="text-xs text-slate-900 font-medium leading-relaxed">
                           Every generated question is backed by verbatim ground-truth source citations. Officers see the exact survey manual title, section clause, page number, and quote verifying each answer.
                         </p>
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-700 border border-[#ebdcc8]">Page Cited</span>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-700 border border-[#ebdcc8]">Verbatim Quotes</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Page Cited</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Verbatim Quotes</span>
                       </div>
                     </div>
 
@@ -1309,14 +1309,14 @@ export default function App() {
                         <h3 className="font-extrabold text-base text-slate-900 leading-snug group-hover:text-[#ea8b21] transition-colors">
                           iGOT Karmayogi Timestamped Learning
                         </h3>
-                        <p className="text-xs text-slate-600 leading-relaxed">
+                        <p className="text-xs text-slate-900 font-medium leading-relaxed">
                           Identified gaps are paired with tailored micro-learning video modules from the iGOT ecosystem that start at the exact minute and second where the concept is taught.
                         </p>
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-700 border border-[#ebdcc8]">Timestamp Seeking</span>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-700 border border-[#ebdcc8]">Micro-Modules</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Timestamp Seeking</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#faf5ec] text-slate-900 border border-[#ebdcc8]">Micro-Modules</span>
                       </div>
                     </div>
 
@@ -1334,9 +1334,9 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#ebdcc8]/60 gap-2">
                   <div>
                     <h3 className="text-xl font-black text-slate-900">How to Navigate SankhyaSetu AI</h3>
-                    <p className="text-xs text-slate-500">Click any step below to launch that module directly:</p>
+                    <p className="text-xs text-slate-900 font-medium">Click any step below to launch that module directly:</p>
                   </div>
-                  <span className="text-xs font-bold px-3 py-1 bg-[#faf5ec] text-slate-700 rounded-full border border-[#ebdcc8] self-start sm:self-auto">
+                  <span className="text-xs font-bold px-3 py-1 bg-[#faf5ec] text-slate-900 rounded-full border border-[#ebdcc8] self-start sm:self-auto">
                     Interactive 4-Step Guide
                   </span>
                 </div>
@@ -1357,7 +1357,7 @@ export default function App() {
                       </span>
                     </div>
                     <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-[#ea8b21] transition-colors">Set Working Field</h4>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-900 font-medium leading-relaxed">
                       Click to choose or switch your domain (NSSO, CSO, or ASUSE).
                     </p>
                   </div>
@@ -1376,7 +1376,7 @@ export default function App() {
                       </span>
                     </div>
                     <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-[#ea8b21] transition-colors">Run Skill Diagnostic</h4>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-900 font-medium leading-relaxed">
                       Click to take the 10-question AI test to detect weak areas & see your Radar.
                     </p>
                   </div>
@@ -1397,7 +1397,7 @@ export default function App() {
                       </span>
                     </div>
                     <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-[#ea8b21] transition-colors">Generate Quizzes</h4>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-900 font-medium leading-relaxed">
                       Click to upload survey manuals and test with Ground Truth citations.
                     </p>
                   </div>
@@ -1416,7 +1416,7 @@ export default function App() {
                       </span>
                     </div>
                     <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-[#ea8b21] transition-colors">Audit in Dashboard</h4>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-900 font-medium leading-relaxed">
                       Click to review previous test attempts and track competency growth.
                     </p>
                   </div>
