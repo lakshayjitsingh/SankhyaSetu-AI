@@ -793,12 +793,12 @@ export default function App() {
                     MoSPI
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium">Official Statistical Capacity Building Platform</p>
+                <p className="text-[11px] text-slate-900 font-semibold">Official Statistical Capacity Building Platform</p>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold px-3 py-1 bg-white text-slate-700 border border-[#ebdcc8] rounded-full shadow-2xs">
+              <span className="text-[11px] font-bold px-3 py-1 bg-white text-slate-900 border border-[#ebdcc8] rounded-full shadow-2xs">
                 SIH Problem #SIH26101
               </span>
             </div>
@@ -813,7 +813,7 @@ export default function App() {
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
                 {isSignUp ? "Create an Account" : "Sign In"}
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-900 font-medium">
                 {isSignUp 
                   ? "Register with your credentials to access your official MoSPI dashboard." 
                   : "Enter your credentials or use Google OAuth to access your account."}
@@ -842,7 +842,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={loginWithGoogle}
-                className="w-full py-3 px-4 bg-white hover:bg-[#faf5ec] text-slate-800 border border-[#ebdcc8] hover:border-[#ea8b21]/60 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                className="w-full py-3 px-4 bg-white hover:bg-[#faf5ec] text-slate-900 border border-[#ebdcc8] hover:border-[#ea8b21]/60 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
@@ -856,7 +856,7 @@ export default function App() {
               {/* Centered 'or' Divider */}
               <div className="relative my-6 flex items-center justify-center">
                 <div className="w-full border-t border-[#ebdcc8]"></div>
-                <span className="absolute bg-white px-3 text-xs text-slate-400 font-medium">
+                <span className="absolute bg-white px-3 text-xs text-slate-900 font-bold">
                   or
                 </span>
               </div>
@@ -864,7 +864,7 @@ export default function App() {
               {/* Email & Password Form in Karmayogi Palette */}
               <form onSubmit={handleDirectAuth} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">Email address</label>
+                  <label className="text-xs font-bold text-slate-900 block mb-1.5">Email address</label>
                   <input
                     type="email"
                     required
@@ -874,12 +874,12 @@ export default function App() {
                       setDirectEmail(e.target.value);
                       if (authError) setAuthError('');
                     }}
-                    className="w-full px-4 py-3 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                    className="w-full px-4 py-3 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  <label className="text-xs font-bold text-slate-900 block mb-1.5">
                     {isSignUp ? "Create password (min. 6 characters)" : "Password"}
                   </label>
                   <input
@@ -891,7 +891,7 @@ export default function App() {
                       setDirectPassword(e.target.value);
                       if (authError) setAuthError('');
                     }}
-                    className="w-full px-4 py-3 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                    className="w-full px-4 py-3 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
                   />
                 </div>
 
@@ -903,7 +903,7 @@ export default function App() {
                 </button>
               </form>
 
-              <div className="pt-2 text-center text-xs text-slate-500">
+              <div className="pt-2 text-center text-xs text-slate-900 font-medium">
                 {isSignUp ? (
                   <p>
                     Already have an account?{" "}
@@ -935,7 +935,7 @@ export default function App() {
         </div>
 
         {/* Footer */}
-        <footer className="py-4 text-center text-xs text-slate-400 border-t border-[#ebdcc8] bg-white">
+        <footer className="py-4 text-center text-xs text-slate-900 font-bold border-t border-[#ebdcc8] bg-white">
           Ministry of Statistics and Programme Implementation • Smart India Hackathon 2026 • SIH26101
         </footer>
       </div>
@@ -2597,7 +2597,7 @@ export default function App() {
           </main>
 
         {/* Clean Minimal Footer */}
-        <footer className="py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-400 mt-auto">
+        <footer className="py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-900 font-bold mt-auto">
           Ministry of Statistics and Programme Implementation • Smart India Hackathon 2026 • SIH26101
         </footer>
 
