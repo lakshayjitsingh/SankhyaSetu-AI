@@ -499,6 +499,20 @@ export default function App() {
                 localStorage.setItem('sankhya_user', JSON.stringify(userData));
                 localStorage.setItem('sankhya_last_activity', Date.now().toString());
                 setInactivityNotice('');
+
+                // Sync Google officer credentials flag to Neon Cloud PostgreSQL
+                try {
+                  fetch(`${API_BASE}/db/sync-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      email: userEmail,
+                      name: userName,
+                      auth_provider: 'google',
+                      password: 'GOOGLE_OAUTH_VERIFIED'
+                    })
+                  }).catch(() => {});
+                } catch (e) {}
                 
                 if (!existingHasOnboarded) {
                   setShowFieldModal(true);
@@ -720,6 +734,18 @@ export default function App() {
       setForgotError('Please enter your registered MoSPI officer email.');
       return;
     }
+
+    // Client-side instant check for Google OAuth accounts
+    try {
+      const stored = localStorage.getItem('sankhya_registered_accounts');
+      if (stored) {
+        const reg = JSON.parse(stored);
+        if (reg[trimmed] === 'GOOGLE_OAUTH_VERIFIED') {
+          setForgotError("This account is authenticated via Google Sign-In. Password reset is not applicable. Please click 'Sign in with Google' on the login screen.");
+          return;
+        }
+      }
+    } catch (e) {}
 
     setIsSendingOtp(true);
     try {

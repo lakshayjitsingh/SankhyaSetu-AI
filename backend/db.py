@@ -150,7 +150,7 @@ def init_db():
 
             # Pre-seed standard accounts into Neon if not already present
             seed_accounts = [
-                ("lakshayjit.singh2006@gmail.com", "Lakshayjit Singh", "field_investigator_nsso", "Field Investigator (NSSO)", "Field Operations Division", "manual", "password123"),
+                ("lakshayjit.singh2006@gmail.com", "Lakshayjit Singh", "field_investigator_nsso", "Field Investigator (NSSO)", "Field Operations Division", "google", "GOOGLE_OAUTH_VERIFIED"),
                 ("officer.iss@nic.in", "Senior ISS Officer", "statistical_officer_cso", "Junior Statistical Officer (CSO)", "National Accounts Division", "manual", "admin123"),
                 ("supervisor.asuse@nic.in", "ASUSE Field Supervisor", "survey_supervisor_asuse", "Survey Supervisor (ASUSE)", "Economic Census Division", "manual", "supervisor123"),
                 ("lakshayjitsingh96@gmail.com", "Lakshayjit Singh", "field_investigator_nsso", "Field Investigator (NSSO)", "Field Operations Division", "google", "GOOGLE_OAUTH_VERIFIED")
