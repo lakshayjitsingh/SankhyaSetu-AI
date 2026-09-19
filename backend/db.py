@@ -303,6 +303,14 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
             if auth_provider == "manual" and not hashed_password:
                 cur.execute("SELECT id FROM officers WHERE email = %s;", (email,))
                 if not cur.fetchone():
+                    cur.execute("SELECT id, name FROM supervisors WHERE email = %s;", (email,))
+                    sup = cur.fetchone()
+                    if sup:
+                        return {"id": sup[0], "email": email, "name": sup[1], "role": "supervisor"}
+                    cur.execute("SELECT id, name FROM directorate_cadres WHERE email = %s;", (email,))
+                    boss = cur.fetchone()
+                    if boss:
+                        return {"id": boss[0], "email": email, "name": boss[1], "role": "boss"}
                     return {"not_found": True}
                 
                 cur.execute("""

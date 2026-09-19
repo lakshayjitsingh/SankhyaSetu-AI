@@ -376,9 +376,12 @@ export default function App() {
   // Synchronize officer profile to Neon Cloud PostgreSQL
   const syncOfficerProfileToCloud = async (u) => {
     if (!u?.email) return;
+    if (u.portal === 'supervisor' || u.portal === 'boss' || u.role === 'supervisor' || u.role === 'boss') {
+      return;
+    }
     try {
       const activeF = STATISTICAL_FIELDS.find(f => f.id === u.selectedField) || STATISTICAL_FIELDS[0];
-      const res = await fetch(`${API_BASE}/db/sync-user`, {
+      await fetch(`${API_BASE}/db/sync-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -390,17 +393,6 @@ export default function App() {
           auth_provider: u.isGoogle ? 'google' : 'manual'
         })
       });
-
-      if (res.status === 404) {
-        const data = await res.json().catch(() => ({}));
-        if (data.not_found) {
-          // Account was deleted from database; clear stale local session immediately
-          console.warn("Officer account deleted from cloud database. Clearing local session.");
-          localStorage.removeItem('sankhya_user');
-          localStorage.removeItem('sankhya_last_activity');
-          setUser(null);
-        }
-      }
     } catch (e) {
       console.warn("Neon cloud user sync offline fallback:", e);
     }
@@ -409,6 +401,9 @@ export default function App() {
   // Check onboarding on login & sync history with Neon Cloud DB
   useEffect(() => {
     if (user?.email) {
+      if (user.portal === 'supervisor' || user.portal === 'boss' || user.role === 'supervisor' || user.role === 'boss') {
+        return;
+      }
       const historyKey = `sankhya_history_${user.email.toLowerCase()}`;
       const savedHistory = localStorage.getItem(historyKey);
       
