@@ -4,7 +4,7 @@ import {
   ShieldCheck, ShieldAlert, Clock, BookOpen, LogOut, Sparkles, User, 
   ArrowLeft, Check, ChevronRight, X, ExternalLink, Settings, Key,
   Home, BarChart3, FileText, Award, TrendingUp, RefreshCw, Layers, CheckCircle,
-  Menu, Eye, EyeOff
+  Menu, Eye, EyeOff, Users, Shield, Building2
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
@@ -272,13 +272,27 @@ export default function App() {
   const [isUploadingManual, setIsUploadingManual] = useState(false);
   const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
 
-  // Manual Auth Form States
+  // Manual Auth Form States (Field Officer - Cadre 1)
   const [isSignUp, setIsSignUp] = useState(false);
   const [directEmail, setDirectEmail] = useState('');
   const [directPassword, setDirectPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Supervisory Cadre Form States (Cadre 2)
+  const [supervisorEmail, setSupervisorEmail] = useState('');
+  const [supervisorPassword, setSupervisorPassword] = useState('');
+  const [supervisorAuthError, setSupervisorAuthError] = useState('');
+  const [isSupervisorAuthenticating, setIsSupervisorAuthenticating] = useState(false);
+  const [showSupervisorPassword, setShowSupervisorPassword] = useState(false);
+
+  // Directorate General Form States (Cadre 3)
+  const [bossEmail, setBossEmail] = useState('boss@gmail.com');
+  const [bossPassword, setBossPassword] = useState('123456');
+  const [bossAuthError, setBossAuthError] = useState('');
+  const [isBossAuthenticating, setIsBossAuthenticating] = useState(false);
+  const [showBossPassword, setShowBossPassword] = useState(false);
 
   // Change Password Modal States (for direct manual accounts)
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -720,6 +734,124 @@ export default function App() {
     }
   };
 
+  // Dedicated Supervisor Portal Login (Cadre 2)
+  const handleSupervisorAuth = async (e) => {
+    e.preventDefault();
+    setSupervisorAuthError('');
+    const trimmedEmail = supervisorEmail.trim().toLowerCase();
+    const trimmedPass = supervisorPassword.trim();
+
+    if (!trimmedEmail || !trimmedPass) {
+      setSupervisorAuthError('Please enter both supervisor email and password.');
+      return;
+    }
+
+    setIsSupervisorAuthenticating(true);
+    try {
+      const response = await fetch(`${API_BASE}/db/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setSupervisorAuthError(data.error || 'Invalid supervisor credentials.');
+        setIsSupervisorAuthenticating(false);
+        return;
+      }
+
+      const officer = data.officer;
+      if (officer?.role !== 'supervisor' && officer?.portal !== 'supervisor' && !trimmedEmail.startsWith('supervisor')) {
+        setSupervisorAuthError('Account is not authorized for Supervisory Cadre. Access requires clearance from Directorate General.');
+        setIsSupervisorAuthenticating(false);
+        return;
+      }
+
+      setCurrentPortal('supervisor');
+      const assignedField = officer?.role_id || 'survey_supervisor_asuse';
+      const supervisorData = {
+        name: officer?.name || 'Field Squad Lead',
+        email: trimmedEmail,
+        role: 'supervisor',
+        portal: 'supervisor',
+        assignedField: assignedField,
+        badge: officer?.badge || 'SSO-DEL-101',
+        department: officer?.department || 'Field Operations Division',
+        loginTime: new Date().toLocaleTimeString()
+      };
+      setUser(supervisorData);
+      localStorage.setItem('sankhya_user', JSON.stringify(supervisorData));
+      localStorage.setItem('sankhya_last_activity', Date.now().toString());
+      setInactivityNotice('');
+      setSupervisorPassword('');
+      setSupervisorEmail('');
+      setIsSupervisorAuthenticating(false);
+    } catch (err) {
+      console.error("Supervisor auth error:", err);
+      setSupervisorAuthError('Network error connecting to authentication server.');
+      setIsSupervisorAuthenticating(false);
+    }
+  };
+
+  // Dedicated Boss / Directorate General Login (Cadre 3)
+  const handleBossAuth = async (e) => {
+    e.preventDefault();
+    setBossAuthError('');
+    const trimmedEmail = bossEmail.trim().toLowerCase();
+    const trimmedPass = bossPassword.trim();
+
+    if (!trimmedEmail || !trimmedPass) {
+      setBossAuthError('Please enter both Directorate email and password.');
+      return;
+    }
+
+    setIsBossAuthenticating(true);
+    try {
+      const response = await fetch(`${API_BASE}/db/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setBossAuthError(data.error || 'Invalid Directorate credentials.');
+        setIsBossAuthenticating(false);
+        return;
+      }
+
+      const officer = data.officer;
+      if (officer?.role !== 'boss' && officer?.portal !== 'boss' && trimmedEmail !== 'boss@gmail.com') {
+        setBossAuthError('Account is not authorized for Directorate General executive command.');
+        setIsBossAuthenticating(false);
+        return;
+      }
+
+      setCurrentPortal('boss');
+      const bossData = {
+        name: officer?.name || 'Dr. S. K. Mukherjee',
+        email: trimmedEmail,
+        role: 'boss',
+        portal: 'boss',
+        badge: 'DDG-HQ-001',
+        department: 'MoSPI Central Directorate, New Delhi',
+        loginTime: new Date().toLocaleTimeString()
+      };
+      setUser(bossData);
+      localStorage.setItem('sankhya_user', JSON.stringify(bossData));
+      localStorage.setItem('sankhya_last_activity', Date.now().toString());
+      setInactivityNotice('');
+      setBossPassword('');
+      setBossEmail('');
+      setIsBossAuthenticating(false);
+    } catch (err) {
+      console.error("Boss auth error:", err);
+      setBossAuthError('Network error connecting to authentication server.');
+      setIsBossAuthenticating(false);
+    }
+  };
+
   // Change Password for Direct Email / Password Accounts
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -899,6 +1031,12 @@ export default function App() {
     setDirectEmail('');
     setDirectPassword('');
     setAuthError('');
+    setSupervisorEmail('');
+    setSupervisorPassword('');
+    setSupervisorAuthError('');
+    setBossEmail('boss@gmail.com');
+    setBossPassword('123456');
+    setBossAuthError('');
     setShowInactivityWarning(false);
     localStorage.removeItem('sankhya_user');
     localStorage.removeItem('sankhya_last_activity');
@@ -1211,172 +1349,401 @@ export default function App() {
           </div>
         </header>
 
-        {/* Center Auth Card in Karmayogi Palette (No tick icon) */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-          <div className="bg-white border border-[#ebdcc8] rounded-3xl p-8 sm:p-10 shadow-xl shadow-[#ea8b21]/5 max-w-md w-full space-y-6 animate-in fade-in zoom-in-95 duration-200">
-            
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                {isSignUp ? "Create an Account" : "Sign In"}
-              </h1>
-              <p className="text-xs text-slate-900 font-medium">
-                {isSignUp 
-                  ? "Register with your credentials to access your official MoSPI dashboard." 
-                  : "Enter your credentials or use Google OAuth to access your account."}
-              </p>
+        {/* Unified Multi-Cadre Gateway (CUIMS-Inspired 3-Card Architecture) */}
+        <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
+          
+          <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
+            <span className="text-[10px] font-extrabold tracking-wider uppercase px-3 py-1 bg-[#ea8b21]/15 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full">
+              Unified Multi-Cadre Gateway
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+              Official MoSPI Statistical & Directorate Gateway
+            </h1>
+            <p className="text-xs text-slate-600 font-medium">
+              Select your designated cadre portal below to access field surveys, supervisory audits, or national command analytics.
+            </p>
+          </div>
+
+          {inactivityNotice && (
+            <div className="max-w-2xl mx-auto mb-6 p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-left">
+                <span className="font-bold text-amber-800 block">Security Auto-Lock Triggered</span>
+                <p className="text-[11px] text-amber-700 leading-relaxed">{inactivityNotice}</p>
+              </div>
             </div>
+          )}
 
-            {inactivityNotice && (
-              <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-left">
-                  <span className="font-bold text-amber-800 block">Security Auto-Lock Triggered</span>
-                  <p className="text-[11px] text-amber-700 leading-relaxed">{inactivityNotice}</p>
-                </div>
-              </div>
-            )}
-
-            {authError && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs flex items-center gap-2.5 animate-in fade-in duration-150">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="font-medium">{authError}</span>
-              </div>
-            )}
-
-            {/* Official Google OAuth Button */}
-            <div className="space-y-4 pt-1">
-              <button
-                type="button"
-                onClick={loginWithGoogle}
-                className="w-full py-3 px-4 bg-white hover:bg-[#faf5ec] text-slate-900 border border-[#ebdcc8] hover:border-[#ea8b21]/60 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
-                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-                </svg>
-                <span>Sign in with Google</span>
-              </button>
-
-              {/* Centered 'or' Divider */}
-              <div className="relative my-6 flex items-center justify-center">
-                <div className="w-full border-t border-[#ebdcc8]"></div>
-                <span className="absolute bg-white px-3 text-xs text-slate-900 font-bold">
-                  or
-                </span>
-              </div>
-
-              {/* Email & Password Form in Karmayogi Palette */}
-              <form onSubmit={handleDirectAuth} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-900 block mb-1.5">Email address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="officer@mospi.gov.in"
-                    value={directEmail}
-                    onChange={(e) => {
-                      setDirectEmail(e.target.value);
-                      if (authError) setAuthError('');
-                    }}
-                    className="w-full px-4 py-3 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-900 block">
-                      {isSignUp ? "Create password (min. 6 characters)" : "Password"}
-                    </label>
-                    {!isSignUp && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForgotEmail(directEmail);
-                          setForgotStep('enter_email');
-                          setForgotError('');
-                          setForgotSuccess('');
-                          setShowForgotPasswordModal(true);
-                        }}
-                        className="text-[11px] font-bold text-[#ea8b21] hover:text-[#d97d16] hover:underline cursor-pointer transition-colors"
-                      >
-                        Forgot Password?
-                      </button>
-                    )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+            
+            {/* ========================================================================= */}
+            {/* CARD 1 (LEFT): FIELD OFFICER PORTAL (JSO / FIELD INVESTIGATOR) */}
+            {/* ========================================================================= */}
+            <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#ea8b21]/5 flex flex-col justify-between space-y-5 animate-in fade-in duration-200">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 shadow-2xs">
+                    <User className="w-6 h-6" />
                   </div>
-                  <div className="relative">
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-200 rounded-full">
+                    Cadre 1 • Field Operations
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-slate-900">
+                    Field Officer Login
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Field Investigators (FI) & Junior Statistical Officers (JSO). Conduct household & enterprise surveys, CAPI data entry, and diagnostics.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span className="font-medium">{authError}</span>
+                  </div>
+                )}
+
+                {/* Google Sign In */}
+                <button
+                  type="button"
+                  onClick={loginWithGoogle}
+                  className="w-full py-2.5 px-4 bg-white hover:bg-[#faf5ec] text-slate-900 border border-[#ebdcc8] hover:border-[#ea8b21]/60 rounded-xl font-bold text-xs flex items-center justify-center gap-2.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                  </svg>
+                  <span>Sign in with Google</span>
+                </button>
+
+                <div className="relative my-3 flex items-center justify-center">
+                  <div className="w-full border-t border-[#ebdcc8]"></div>
+                  <span className="absolute bg-white px-2.5 text-[11px] text-slate-500 font-bold">
+                    or officer credentials
+                  </span>
+                </div>
+
+                <form onSubmit={handleDirectAuth} className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-900 block mb-1">Officer Email</label>
                     <input
-                      type={showPassword ? "text" : "password"}
+                      type="email"
                       required
-                      placeholder="••••••••"
-                      value={directPassword}
+                      placeholder="officer@mospi.gov.in"
+                      value={directEmail}
                       onChange={(e) => {
-                        setDirectPassword(e.target.value);
+                        setDirectEmail(e.target.value);
                         if (authError) setAuthError('');
                       }}
-                      className="w-full px-4 py-3 pr-11 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                      className="w-full px-3.5 py-2.5 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
-                      title={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={isAuthenticating}
-                  className={`w-full py-3.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 hover:shadow-lg hover:shadow-[#ea8b21]/30 cursor-pointer mt-1 flex items-center justify-center gap-2 ${isAuthenticating ? 'opacity-75 cursor-not-allowed' : ''}`}
-                >
-                  {isAuthenticating && (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-900 block">Password</label>
+                      {!isSignUp && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForgotEmail(directEmail);
+                            setForgotStep('enter_email');
+                            setForgotError('');
+                            setForgotSuccess('');
+                            setShowForgotPasswordModal(true);
+                          }}
+                          className="text-[10px] font-bold text-[#ea8b21] hover:text-[#d97d16] hover:underline cursor-pointer"
+                        >
+                          Forgot?
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••••"
+                        value={directPassword}
+                        onChange={(e) => {
+                          setDirectPassword(e.target.value);
+                          if (authError) setAuthError('');
+                        }}
+                        className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isAuthenticating}
+                    className={`w-full py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-[#ea8b21]/25 hover:shadow-md cursor-pointer flex items-center justify-center gap-2 ${isAuthenticating ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  >
+                    {isAuthenticating && (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    {isAuthenticating 
+                      ? (isSignUp ? "Creating..." : "Signing In...")
+                      : (isSignUp ? "Create Account & Continue" : "Sign In to Officer Portal")
+                    }
+                  </button>
+                </form>
+
+                <div className="text-center text-[11px] text-slate-900 font-medium pt-1">
+                  {isSignUp ? (
+                    <p>
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setIsSignUp(false); setAuthError(''); }}
+                        className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
+                      >
+                        Sign in
+                      </button>
+                    </p>
+                  ) : (
+                    <p>
+                      Don't have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setIsSignUp(true); setAuthError(''); }}
+                        className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
+                      >
+                        Sign up
+                      </button>
+                    </p>
                   )}
-                  {isAuthenticating 
-                    ? (isSignUp ? "Creating Account..." : "Signing In...")
-                    : (isSignUp ? "Create Account & Continue" : "Sign In to Portal")
-                  }
-                </button>
-              </form>
-
-              <div className="pt-2 text-center text-xs text-slate-900 font-medium">
-                {isSignUp ? (
-                  <p>
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => { setIsSignUp(false); setAuthError(''); }}
-                      className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
-                    >
-                      Sign in
-                    </button>
-                  </p>
-                ) : (
-                  <p>
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => { setIsSignUp(true); setAuthError(''); }}
-                      className="text-[#ea8b21] hover:text-[#d97d16] font-bold hover:underline cursor-pointer"
-                    >
-                      Sign up
-                    </button>
-                  </p>
-                )}
+                </div>
               </div>
 
-              {/* Secure Cloud Database Status Indicator */}
-              <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>MoSPI Secure Cloud Database Connected</span>
+              <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>MoSPI Cloud DB Connected</span>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* CARD 2 (CENTER): SUPERVISORY CONSOLE (SQUAD LEADS) */}
+            {/* ========================================================================= */}
+            <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#ea8b21]/5 flex flex-col justify-between space-y-5 animate-in fade-in duration-200">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shadow-2xs">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full">
+                    Cadre 2 • Squad Leads (SSO)
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-slate-900">
+                    Supervisory Console
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Field Squad Leads & Senior Statistical Officers (SSO). Review field data quality, audit non-response, and submit daily compliance to HQ.
+                  </p>
+                </div>
+
+                {/* Directorate Clearance Notice */}
+                <div className="p-3 bg-[#faf5ec] border border-[#ebdcc8] rounded-2xl text-[11px] text-slate-800 leading-relaxed space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-[#ea8b21]">
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>Directorate Clearance Required</span>
+                  </div>
+                  <p className="text-slate-600 text-[10.5px]">
+                    Supervisory accounts & squad allocations are cleared and verified directly by the Directorate General.
+                  </p>
+                </div>
+
+                {supervisorAuthError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span className="font-medium">{supervisorAuthError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSupervisorAuth} className="space-y-3 pt-1">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-900 block mb-1">Supervisor Email</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="supervisor@mospi.gov.in"
+                      value={supervisorEmail}
+                      onChange={(e) => {
+                        setSupervisorEmail(e.target.value);
+                        if (supervisorAuthError) setSupervisorAuthError('');
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-indigo-600 focus:border-indigo-600 focus:bg-white transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-900 block mb-1">Access Password</label>
+                    <div className="relative">
+                      <input
+                        type={showSupervisorPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••••"
+                        value={supervisorPassword}
+                        onChange={(e) => {
+                          setSupervisorPassword(e.target.value);
+                          if (supervisorAuthError) setSupervisorAuthError('');
+                        }}
+                        className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-indigo-600 focus:border-indigo-600 focus:bg-white transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSupervisorPassword(!showSupervisorPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                      >
+                        {showSupervisorPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSupervisorAuthenticating}
+                    className={`w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-600/25 hover:shadow-md cursor-pointer flex items-center justify-center gap-2 ${isSupervisorAuthenticating ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  >
+                    {isSupervisorAuthenticating && (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    {isSupervisorAuthenticating ? "Verifying Cadre..." : "Sign In to Supervisory Console"}
+                  </button>
+                </form>
+              </div>
+
+              <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                <Shield className="w-3 h-3 text-indigo-500" />
+                <span>Cadre-Protected Access Control</span>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* CARD 3 (RIGHT): DIRECTORATE GENERAL (DG COMMAND HUB) */}
+            {/* ========================================================================= */}
+            <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#ea8b21]/5 flex flex-col justify-between space-y-5 animate-in fade-in duration-200">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-[#ea8b21]/10 border border-[#ea8b21]/30 flex items-center justify-center text-[#ea8b21] shadow-2xs">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full">
+                    Cadre 3 • Ministry HQ Command
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-slate-900">
+                    Directorate General (DG)
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Deputy Director Generals & Ministry HQ Executive Command. Macro statistical oversight, national compliance audits, and cadre governance.
+                  </p>
+                </div>
+
+                {/* Cabinet Appointment Notice */}
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl text-[11px] text-slate-800 leading-relaxed space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                    <Building2 className="w-4 h-4 shrink-0" />
+                    <span>Cabinet Appointments Committee (DoPT)</span>
+                  </div>
+                  <p className="text-slate-600 text-[10.5px]">
+                    Single-seat Directorate initialized via confidential Government Gazette order.
+                  </p>
+                </div>
+
+                {bossAuthError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span className="font-medium">{bossAuthError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleBossAuth} className="space-y-3 pt-1">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-900 block mb-1">Directorate Email</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="boss@gmail.com"
+                      value={bossEmail}
+                      onChange={(e) => {
+                        setBossEmail(e.target.value);
+                        if (bossAuthError) setBossAuthError('');
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-900 block mb-1">Secret Key / Password</label>
+                    <div className="relative">
+                      <input
+                        type={showBossPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••"
+                        value={bossPassword}
+                        onChange={(e) => {
+                          setBossPassword(e.target.value);
+                          if (bossAuthError) setBossAuthError('');
+                        }}
+                        className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowBossPassword(!showBossPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                      >
+                        {showBossPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1-Click Demo Key Helper */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBossEmail('boss@gmail.com');
+                      setBossPassword('123456');
+                      if (bossAuthError) setBossAuthError('');
+                    }}
+                    className="w-full py-1.5 px-2 bg-[#faf5ec] hover:bg-[#f3eadc] border border-[#ebdcc8] rounded-lg text-[10.5px] font-bold text-[#ea8b21] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Key className="w-3 h-3" />
+                    <span>Auto-Fill Demo Key (boss@gmail.com / 123456)</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isBossAuthenticating}
+                    className={`w-full py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-[#ea8b21]/25 hover:shadow-md cursor-pointer flex items-center justify-center gap-2 ${isBossAuthenticating ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  >
+                    {isBossAuthenticating && (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    {isBossAuthenticating ? "Accessing Directorate HQ..." : "Sign In to Directorate HQ"}
+                  </button>
+                </form>
+              </div>
+
+              <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>Confidential • Collection of Statistics Act</span>
               </div>
             </div>
 
