@@ -65,6 +65,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "When a sample village exceeds 1,200 population or approximately 300 households, hamlet-group formation is mandatory to avoid coverage bias.",
                 "source": "MoSPI NSS Survey Methodology Handbook, Section 2.3, Page 14"
+            },
+            {
+                "template": "In an Urban Frame Survey (UFS) block in {district} comprising {n_units} listed dwelling units, an investigator needs to sample {sample_size} units using Circular Systematic Sampling. With random start R={r_start} and interval K={interval}, how is the second sample unit determined?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "n_units": 160, "sample_size": 8, "interval": 20, "r_start": random.randint(3, 12)},
+                "correct": "Select unit (R + K) with circular wrap-around if the index exceeds the total frame size N",
+                "distractors": [
+                    "Pick the immediate next physical neighbor of unit R without calculating interval steps",
+                    "Always select unit 2R regardless of the sampling interval K",
+                    "Select only households whose serial numbers are prime numbers"
+                ],
+                "explanation": "Circular Systematic Sampling selects units at fixed interval K from a random start R, with wrap-around at frame boundary N.",
+                "source": "NSSO Field Listing & Sampling Manual, Section 3.1, Page 22"
+            },
+            {
+                "template": "During village boundary demarcation in {district}, {name} notices that 25 newly constructed houses have crossed the traditional revenue boundary into an adjoining unselected village. What is the correct listing protocol?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS)},
+                "correct": "Include only structures strictly falling within the official jurisdictional revenue map of the sample village",
+                "distractors": [
+                    "Expand the boundary arbitrarily to encompass the entire newly built colony",
+                    "Exclude all 25 houses and shift the village boundary inward by 200 meters",
+                    "Canvass all newly built houses and record them as an unofficial urban spillover block"
+                ],
+                "explanation": "NSSO listing strictly adheres to cadastral revenue village boundaries as demarcated on official MoSPI / Census maps.",
+                "source": "MoSPI Boundary Demarcation & Listing Manual, Section 1.4, Page 9"
             }
         ],
         "non_response_protocol": [
@@ -79,6 +103,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "MoSPI Field Guidelines strictly forbid immediate substitution without at least two mandatory revisits at varying times to prevent non-response bias.",
                 "source": "NSSO Field Staff Instructions, Section 4.1, Page 31"
+            },
+            {
+                "template": "In {district}, the head of a farming household adamantly refuses to disclose annual agricultural income to {name}, expressing fear of losing welfare benefits. How should the investigator handle this reluctant respondent?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS)},
+                "correct": "Reassure statutory confidentiality under the Collection of Statistics Act 2008 and enlist local village influencers to build trust",
+                "distractors": [
+                    "Threaten the respondent with immediate police intervention and confiscation of ration cards",
+                    "Record arbitrary default numbers based on neighboring farm yields without the respondent's consent",
+                    "Mark the household as permanently absent and substitute with a cooperative relative's house"
+                ],
+                "explanation": "Field investigators must utilize soft rapport-building, statutory confidentiality assurances, and local credibility channels to convert refusals.",
+                "source": "MoSPI Field Enumerator Behavioral Guide, Section 2.2, Page 17"
+            },
+            {
+                "template": "During the survey visit in {district}, sample dwelling #{sample_no} is discovered to have been completely demolished for road widening 2 months prior. What is the required procedure?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "sample_no": random.randint(1, 12)},
+                "correct": "Record as Casualty (Demolished) with zero substitution, noting the exact date and reason in the field diary and CAPI remarks",
+                "distractors": [
+                    "Immediately canvas the construction contractor's temporary site office instead",
+                    "Trace the former residents to their new relocated address in another district",
+                    "Delete the dwelling unit serial number from the frame to keep total sample count intact"
+                ],
+                "explanation": "Demolished or non-existent units are recorded as casualties without ad-hoc field substitution to preserve design weights.",
+                "source": "NSSO Household Survey Operational Guidelines, Section 5.3, Page 38"
             }
         ],
         "capi_software": [
@@ -93,6 +141,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "In CAPI software, Hard Errors represent logical impossibilities that halt data capture until rectified by the investigator.",
                 "source": "MoSPI CAPI Systems Architecture Manual, Section 5, Page 47"
+            },
+            {
+                "template": "During CAPI tablet entry in {district}, a Soft Validation Error (yellow banner) flags household monthly electricity consumption of Rs. {bill} in an un-electrified rural hamlet. How must {name} proceed?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS), "bill": random.randint(8500, 14000)},
+                "correct": "Re-verify the bill with the respondent, and enter an explanatory remark in the tablet audit note before saving",
+                "distractors": [
+                    "Format the tablet database to remove the validation check rule",
+                    "Change the electricity amount to zero without consulting the respondent",
+                    "Leave the question completely blank and skip to the next section"
+                ],
+                "explanation": "Soft Errors represent statistical anomalies that can be bypassed only after entering a mandatory clarifying audit remark.",
+                "source": "MoSPI CAPI Data Validation Protocols, Section 3.4, Page 29"
+            },
+            {
+                "template": "In a remote tribal sector of {district} with zero cellular connectivity, how does the MoSPI CAPI tablet preserve survey records collected throughout the week?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Saves encrypted SQLite database records locally on tablet storage with cryptographic timestamping until regional sync is restored",
+                "distractors": [
+                    "Discards all answers upon closing the app unless Wi-Fi is continuously active",
+                    "Sends unencrypted SMS packets to the regional server for each answered question",
+                    "Requires paper schedule printing before the tablet can save responses"
+                ],
+                "explanation": "MoSPI CAPI tablets operate fully offline using local encrypted databases and batch-sync with SHA-256 verification when connectivity resumes.",
+                "source": "CAPI Field Security & Synchronization Manual, Section 2.1, Page 15"
             }
         ],
         "data_consistency": [
@@ -107,6 +179,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Internal consistency across itemized expenditure and aggregate consumption is a core validation rule that requires careful respondent probing.",
                 "source": "Household Consumption Manual 2026, Section 7, Page 78"
+            },
+            {
+                "template": "In a Periodic Labour Force Survey (PLFS) interview in {district}, a respondent reports working {days} days as a casual laborer in a 30-day reference period. What consistency rule is violated?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "days": random.randint(34, 42)},
+                "correct": "Days worked cannot exceed the reference period total of 30 days; days must be re-apportioned across weeks",
+                "distractors": [
+                    "Overtime work legally allows recording up to 60 days per calendar month",
+                    "Casual labor days must always be exactly divisible by 7",
+                    "The investigator should change the activity status to regular salaried employment"
+                ],
+                "explanation": "Activity status days during the reference period can never mathematically exceed the total calendar days in that period.",
+                "source": "PLFS Schedule Canvassing Manual, Section 4.2, Page 52"
+            },
+            {
+                "template": "A 19-year-old respondent in {district} is recorded with Principal Usual Activity Status (PS) as 'Regular Salaried Worker' (Code 31), but Subsidiary Status (SS) indicates 'Attending Educational Institution' (Code 91). Is this combination statistically valid?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Yes; an individual can work regular hours while pursuing distance education or evening academic courses",
+                "distractors": [
+                    "No; students are statutorily prohibited from having any salaried employment status in MoSPI surveys",
+                    "No; educational attendance must always override and erase employment status",
+                    "Yes, but only if the monthly wage is below Rs. 5,000"
+                ],
+                "explanation": "PLFS guidelines permit dual activity combinations when major economic time is spent in employment while pursuing studies.",
+                "source": "PLFS Activity Classification Manual, Section 3.1, Page 36"
             }
         ],
         "interview_techniques": [
@@ -121,6 +217,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Statutory confidentiality ensures micro-data can never be utilized for taxation, regulation, or legal proceedings against informants.",
                 "source": "Collection of Statistics Act 2008, Statutory Immunity Clause"
+            },
+            {
+                "template": "While conducting a household enumeration in {district}, a village Sarpanch insists on sitting inside the living room during the interview. How should investigator {name} politely respond?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS)},
+                "correct": "Respectfully explain the privacy requirement of MoSPI statistical surveys and request a one-on-one private setting with the respondent",
+                "distractors": [
+                    "Allow the Sarpanch to answer all consumption and income questions on behalf of the family",
+                    "Abandon the survey immediately and lodge an official FIR at the local police station",
+                    "Ask the Sarpanch to sign as a joint respondent in the CAPI application"
+                ],
+                "explanation": "Informant privacy is crucial to avoid social desirability bias; third parties must not influence respondent disclosures.",
+                "source": "MoSPI Field Interview Protocols & Ethics Handbook, Section 2.1, Page 11"
+            },
+            {
+                "template": "In a female-headed rural household in {district}, the primary informant is uncomfortable discussing family expenditure with male investigator {name}. What professional approach is recommended?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS)},
+                "correct": "Seek assistance from a local female Accredited Social Health Activist (ASHA) or Anganwadi worker to facilitate interview rapport",
+                "distractors": [
+                    "Leave the schedule with the neighbor to fill out at their leisure",
+                    "Impute household expenditure based on the village average and mark as complete",
+                    "Classify the household as non-cooperative and issue an administrative citation"
+                ],
+                "explanation": "Engaging community-trusted female frontline workers (ASHA/Anganwadi) bridges cultural sensitivities and ensures accurate data collection.",
+                "source": "MoSPI Gender-Sensitive Enumeration Guidelines, Section 3.2, Page 24"
             }
         ]
     },
@@ -138,6 +258,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "CSO manual mandates group-relative price imputation to prevent artificial deflation of the headline index.",
                 "source": "CPI Methodology Guidelines, Section 6.2, Page 54"
+            },
+            {
+                "template": "In {district}, an old CRT television model in the CPI consumer basket is discontinued by manufacturers. What replacement protocol must the JSO follow?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Select the highest-selling comparable LED TV specification and perform quality adjustment (hedonic or overlap pricing)",
+                "distractors": [
+                    "Drop the entire Entertainment sub-index from state inflation statistics",
+                    "Set the price of the discontinued model to zero",
+                    "Force merchants to supply old CRT price quotes from memory"
+                ],
+                "explanation": "Item replacement requires selecting the modal volume substitute and applying standard price-overlap quality adjustments.",
+                "source": "CSO Price Statistics Specification Manual, Section 5.1, Page 39"
+            },
+            {
+                "template": "During price collection for seasonal vegetables (e.g. green peas) in {district} during off-season months, what is the approved CSO treatment?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Impute off-season prices based on the movement of the available sub-group basket or use fixed seasonal weights",
+                "distractors": [
+                    "Substitute with imported canned peas regardless of consumer consumption patterns",
+                    "Reallocate 100% of the vegetable weight to dry spices",
+                    "Record the last observed in-season price without any change"
+                ],
+                "explanation": "Seasonal missing items are imputed using subgroup index relatives to avoid volatile distortions.",
+                "source": "CPI Seasonal Item Treatment Guidelines, Section 3.4, Page 28"
             }
         ],
         "data_consistency": [
@@ -152,6 +296,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Price movements exceeding 20% must be audited with explicit written remarks validating local supply shocks or festival demand.",
                 "source": "Price Statistics Scrutiny Manual, Section 4.4, Page 41"
+            },
+            {
+                "template": "During scrutiny of Annual Survey of Industries (ASI) returns in {district}, an industrial unit records Gross Value of Output of Rs. {output} Lakhs and Total Input Cost of Rs. {input} Lakhs (where input > output). What scrutiny check applies?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "output": 40, "input": 65},
+                "correct": "Trigger audit scrutiny for negative Gross Value Added (GVA); verify inventory build-up, major plant breakdowns, or reporting errors",
+                "distractors": [
+                    "Automatically swap the input and output columns in the database",
+                    "Accept without inquiry since private companies frequently run losses",
+                    "Impute output as 150% of input cost by standard convention"
+                ],
+                "explanation": "Negative GVA is a critical scrutiny flag in ASI requiring verification of stock-in-process and abnormal operating conditions.",
+                "source": "ASI Scrutiny Rules & Validation Checks, Section 6.2, Page 48"
+            },
+            {
+                "template": "In a rural price schedule from {district}, kerosene price is reported at Rs. {price}/litre, which is 50% below the state subsidized PDS issue price. What should the JSO do?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "price": 18},
+                "correct": "Reject the quotation as inconsistent with statutory PDS benchmark orders and query the field inspector",
+                "distractors": [
+                    "Approve the price because lower prices reflect well on government inflation metrics",
+                    "Average the price with neighboring state free-market rates",
+                    "Assume the vendor was running an unannounced clearance sale"
+                ],
+                "explanation": "Administered PDS prices must match official state food & civil supplies gazette notification rates.",
+                "source": "Price Statistics Validation Protocols, Section 2.5, Page 19"
             }
         ],
         "econometric_modeling": [
@@ -166,6 +334,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Base revisions align weights with updated Annual Survey of Industries (ASI) structural data to reflect modern economic realities.",
                 "source": "IIP Compilation Guidelines, CSO National Accounts, Page 12"
+            },
+            {
+                "template": "Which index formula is primarily utilized by MoSPI CSO for compiling the Consumer Price Index (CPI) across rural and urban sectors?",
+                "vars": lambda: {},
+                "correct": "Modified Laspeyres price index formula using fixed base-period consumption expenditure weights",
+                "distractors": [
+                    "Paasche price index formula utilizing continuously updated current-month expenditure weights",
+                    "Fisher's Ideal Index calculated at daily intervals",
+                    "Simple unweighted geometric mean of all raw price quotes"
+                ],
+                "explanation": "MoSPI compiles CPI using the Laspeyres index with fixed base-year expenditure weights from the Consumer Expenditure Survey.",
+                "source": "MoSPI Technical Manual on Consumer Price Index, Section 1.2, Page 7"
+            },
+            {
+                "template": "When calculating Constant Price Gross State Domestic Product (GSDP) for manufacturing in {district}, what statistical deflator is applied to nominal output?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Wholesale Price Index (WPI) manufacturing sub-indices matching corresponding NIC 2-digit industry groups",
+                "distractors": [
+                    "Consumer Price Index for Agricultural Labourers (CPI-AL)",
+                    "Simple gold price inflation rate across Indian bullion markets",
+                    "Fixed 5% annual statutory deflation deduction"
+                ],
+                "explanation": "National accounts deflation uses disaggregated WPI commodity indices mapped directly to NIC manufacturing codes.",
+                "source": "State Domestic Product Compilation Guidelines, Section 4.1, Page 33"
             }
         ],
         "r_python_analytics": [
@@ -180,6 +372,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Household serial numbers are only unique within their specific FSU and stratum; a multi-column composite key is required.",
                 "source": "MoSPI Micro-Data Processing Handbook, Page 88"
+            },
+            {
+                "template": "In an R script calculating total state-level unemployed workforce from PLFS micro-data, why must sample weights (multiplier column) be applied?",
+                "vars": lambda: {},
+                "correct": "Because multi-stage stratified sampling assigns unequal selection probabilities that must be inflated to estimate the population",
+                "distractors": [
+                    "Multipliers are merely administrative codes to identify which office processed the file",
+                    "Weighting is optional and only used when generating preliminary press releases",
+                    "To artificially inflate survey sample size so research papers look statistically significant"
+                ],
+                "explanation": "Survey multipliers represent the inverse probability of selection and are mandatory for generating unbiased population estimates.",
+                "source": "NSSO Multiplier & Weighting Guidelines, Section 2.1, Page 14"
+            },
+            {
+                "template": "When analyzing household monthly per capita expenditure (MPCE) in Python, an extreme outlier of Rs. {val} appears in a rural sample. How should the analyst verify it before model training?",
+                "vars": lambda: {"val": 950000},
+                "correct": "Cross-check consumer durable purchase blocks and vehicle acquisition records in the schedule before deciding on Winsorization",
+                "distractors": [
+                    "Instantly delete the row without inspecting any supporting schedule blocks",
+                    "Divide the expenditure value by 100 to force it into the interquartile range",
+                    "Impute the median rural expenditure value without recording the modification"
+                ],
+                "explanation": "High expenditure values may represent genuine lumpy capital purchases (e.g. tractor/car) and must be verified across durable blocks.",
+                "source": "MoSPI Micro-Data Outlier Treatment Guide, Section 3.2, Page 26"
             }
         ],
         "metadata_standards": [
@@ -194,6 +410,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "MoSPI publishes fully anonymized unit-level micro-data under the Open Access tier with complete Data Documentation Initiative (DDI) schemas.",
                 "source": "NDSAP Compliance & Data Dissemination Manual, Page 19"
+            },
+            {
+                "template": "Before public dissemination of PLFS unit-level micro-data on the MoSPI portal, what Personally Identifiable Information (PII) must be masked?",
+                "vars": lambda: {},
+                "correct": "Respondent names, precise GPS coordinates, contact phone numbers, and exact residential street addresses",
+                "distractors": [
+                    "State and district codes must be scrambled to prevent any geographic analysis",
+                    "All economic activity and wage columns must be completely removed",
+                    "Only age and gender fields need to be masked"
+                ],
+                "explanation": "PII scrubbing mandates removing direct identifiers while retaining broad demographic and regional stratification variables.",
+                "source": "MoSPI Data Anonymization & Micro-Data Dissemination Guidelines, Section 1.3, Page 8"
+            },
+            {
+                "template": "What international metadata standard does MoSPI adopt to publish variable definitions, sampling frames, and codebooks on the National Data Portal?",
+                "vars": lambda: {},
+                "correct": "Data Documentation Initiative (DDI) and Statistical Data and Metadata Exchange (SDMX)",
+                "distractors": [
+                    "Proprietary Microsoft Word docx format without schema definitions",
+                    "Unformatted comma-separated text files without data dictionaries",
+                    "Adobe Flash Interactive Animation schemas"
+                ],
+                "explanation": "MoSPI aligns its national data archive with global DDI and SDMX XML schemas to enable international interoperability.",
+                "source": "MoSPI Statistical Standards & Metainformation Architecture, Section 4.2, Page 31"
             }
         ]
     },
@@ -211,6 +451,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Enterprise frame rules specify that location is determined by the point of primary management control and commercial books.",
                 "source": "ASUSE Field Operational Manual, Section 3.2, Page 29"
+            },
+            {
+                "template": "In {district}, an ASUSE sample list contains an enterprise registered under GST, but physical inspection reveals a vacant residential plot with zero commercial activity. What is the classification?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Classify as Non-Existent / Ghost Unit with photographic evidence and supervisory sign-off; do not substitute arbitrarily",
+                "distractors": [
+                    "Substitute immediately with any thriving retail shop on the same street",
+                    "Fabricate estimated turnover based on the registered GST slab",
+                    "Leave the file open indefinitely without submitting an inspection report"
+                ],
+                "explanation": "Non-existent units in the frame are categorized as casualties to reflect realistic enterprise frame over-coverage.",
+                "source": "ASUSE Frame Verification Guidelines, Section 2.3, Page 17"
+            },
+            {
+                "template": "During second-stage stratification of unincorporated enterprises in {district}, how are sample enterprises categorized for balanced representation?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Stratified into Manufacturing, Trade, and Other Services, with sub-stratification by number of workers",
+                "distractors": [
+                    "All enterprises are lumped into a single unstratified bucket sorted by owner age",
+                    "Only units with female directors are selected for sampling",
+                    "Enterprises are selected based exclusively on proximity to the district railway station"
+                ],
+                "explanation": "ASUSE uses activity stratification (Manufacturing, Trade, Services) crossed with worker size (OAE vs. Establishments).",
+                "source": "ASUSE Sampling Design & Stratification Protocols, Section 1.4, Page 11"
             }
         ],
         "non_response_protocol": [
@@ -225,6 +489,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Units temporarily closed due to seasonal or natural causes during the reference period must be documented with actual pro-rated accounting data.",
                 "source": "ASUSE Enterprise Status Handbook, Page 44"
+            },
+            {
+                "template": "An enterprise proprietor in {district} informs Supervisor {name} that all sales ledgers and expense bills are retained by a Chartered Accountant in another town. What is the approved protocol?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS)},
+                "correct": "Grant an official 5-day appointment notice, allow CA coordination, and schedule a formal revisit before closing the schedule",
+                "distractors": [
+                    "Issue an on-the-spot financial penalty of Rs. 10,000",
+                    "Accept rough oral guesses from an apprentice worker at the shopfront",
+                    "Cancel the enterprise registration under the MSME development act"
+                ],
+                "explanation": "When books are offsite, MoSPI protocol provides a formal liaison window to coordinate audited figures.",
+                "source": "ASUSE Field Operational Manual, Section 4.3, Page 37"
+            },
+            {
+                "template": "A seasonal jaggery (gur) processing unit in {district} operates exclusively during {months} winter months. How should the annual reference period figures be recorded?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "months": 4},
+                "correct": "Record operating data for the active operational months, indicating seasonal activity status in Block 2",
+                "distractors": [
+                    "Multiply the monthly data by 12 to falsely portray year-round activity",
+                    "Reject the unit because only perennial 12-month enterprises are eligible for ASUSE",
+                    "Record all revenue as agricultural income and discard industrial output"
+                ],
+                "explanation": "Seasonal enterprises are canvassed for their active operational months with season flags in the identification block.",
+                "source": "ASUSE Seasonal Enterprise Canvassing Protocols, Section 3.1, Page 22"
             }
         ],
         "nic_classification": [
@@ -239,6 +527,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "NIC-2008 principal activity rule assigns classification to the activity generating more than 50% of gross value added.",
                 "source": "National Industrial Classification (NIC-2008) Guidelines, Page 16"
+            },
+            {
+                "template": "In {district}, an enterprise assembles electronic printed circuit boards (PCBs) and provides on-site industrial repair services. PCB assembly generates 70% of gross value added. Which 2-digit NIC group applies?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "NIC Division 26 (Manufacture of computer, electronic and optical products)",
+                "distractors": [
+                    "NIC Division 95 (Repair of computers and personal goods)",
+                    "NIC Division 46 (Wholesale trade)",
+                    "NIC Division 62 (Computer programming and consultancy)"
+                ],
+                "explanation": "Under NIC-2008, principal manufacturing activity overrides ancillary repair services.",
+                "source": "NIC-2008 Industry Classification Index, Page 41"
+            },
+            {
+                "template": "A rural enterprise in {district} maintains 20 milch cattle and produces packaged ghee and paneer on site. 65% of revenue comes from processed paneer/ghee sales. What is the classification?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "NIC Division 10 (Manufacture of food products - processing of dairy products)",
+                "distractors": [
+                    "NIC Division 01 (Crop and animal production, hunting and related services)",
+                    "NIC Division 47 (Retail trade of food items)",
+                    "NIC Division 56 (Food and beverage service activities)"
+                ],
+                "explanation": "When value added from processed dairy goods exceeds raw agricultural rearing, manufacturing classification applies.",
+                "source": "NIC-2008 Food Products Classification Manual, Page 27"
             }
         ],
         "data_consistency": [
@@ -251,6 +563,30 @@ DIAGNOSTIC_SCENARIOS = {
                     "expenses": random.randint(8, 14)
                 },
                 "calc": True
+            },
+            {
+                "template": "An unincorporated furniture unit in {district} reports 10 hired full-time workers for 12 months, but records total annual emoluments paid as Rs. {wages}. What scrutiny check fails?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "wages": 36000},
+                "correct": "Average wage per worker per month calculates to Rs. 300, violating statutory minimum wage sanity checks",
+                "distractors": [
+                    "Hired worker count must always be an odd number in ASUSE",
+                    "Furniture manufacturing is exempt from reporting worker wages",
+                    "Wages must be recorded in US Dollars rather than Indian Rupees"
+                ],
+                "explanation": "Emoluments divided by worker-months must conform to regional minimum wage sanity thresholds.",
+                "source": "ASUSE Data Scrutiny Guidelines, Section 5.1, Page 39"
+            },
+            {
+                "template": "In {district}, an enterprise operating heavy metal machinery reports total plant & machinery asset value of Rs. {assets} Lakhs, but records zero annual electricity and fuel expenditure. What scrutiny action is required?",
+                "vars": lambda: {"district": random.choice(DISTRICTS), "assets": 45},
+                "correct": "Raise a mandatory scrutiny flag: mechanized production requires operational energy inputs; verify generator fuel or utility bills",
+                "distractors": [
+                    "Accept the return because the enterprise might rely entirely on free solar energy without records",
+                    "Change the machinery value to zero to resolve the conflict",
+                    "Disregard energy costs as they are classified under indirect administrative expenses"
+                ],
+                "explanation": "Mechanized manufacturing without reported energy consumption is a core inconsistency requiring documented explanation.",
+                "source": "ASUSE Cross-Block Consistency Scrutiny Guide, Section 4.2, Page 31"
             }
         ],
         "supervisory_audit": [
@@ -265,6 +601,30 @@ DIAGNOSTIC_SCENARIOS = {
                 ],
                 "explanation": "Desk fabrication ('curb-stoning') triggers mandatory re-survey of all schedules assigned to that investigator and disciplinary reporting.",
                 "source": "MoSPI Field Operations Quality Assurance Manual, Section 8, Page 72"
+            },
+            {
+                "template": "During an unannounced spot inspection in {district}, Supervisor {name} discovers that an investigator has delegated survey canvassing to an unauthorized local college student. What immediate action must be taken?",
+                "vars": lambda: {"name": random.choice(NAMES), "district": random.choice(DISTRICTS)},
+                "correct": "Immediately relieve the investigator, revoke CAPI credentials, cancel all unauthorized interviews, and initiate formal administrative inquiry",
+                "distractors": [
+                    "Approve the student as an official deputy investigator on half pay",
+                    "Allow the student to continue if they demonstrate good handwriting",
+                    "Ignore the proxy arrangement as long as daily quota is completed"
+                ],
+                "explanation": "Statutory survey collection strictly forbids proxy enumeration due to legal confidentiality and oath of secrecy requirements.",
+                "source": "MoSPI Supervisory Inspection Manual, Section 2.4, Page 18"
+            },
+            {
+                "template": "In {district}, the supervisory GPS verification log indicates a 4-kilometer discrepancy between the sample enterprise's geo-coordinates and where the CAPI schedule was saved. How must the supervisor resolve this?",
+                "vars": lambda: {"district": random.choice(DISTRICTS)},
+                "correct": "Conduct on-site physical re-verification at the sample address to confirm whether interview occurred at the enterprise or offsite",
+                "distractors": [
+                    "Assume satellite GPS coordinates are naturally inaccurate and override the warning",
+                    "Shift the official UFS boundary map by 4 kilometers to cover the investigator's location",
+                    "Delete the GPS coordinates column from the export database"
+                ],
+                "explanation": "GPS audit discrepancies exceeding tolerance limits mandate physical verification of interview authenticity.",
+                "source": "CAPI Audit & Quality Monitoring Protocols, Section 6.1, Page 43"
             }
         ]
     }
@@ -350,7 +710,7 @@ Return ONLY a valid JSON array of 5 objects:
             }
         }
         try:
-            res = _HTTP_SESSION.post(url, json=payload, timeout=5.5)
+            res = _HTTP_SESSION.post(url, json=payload, timeout=8.5)
             if res.status_code == 200:
                 raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
                 parsed = json.loads(raw)
@@ -382,11 +742,11 @@ def call_gemini_diagnostic_generator(role_id):
         f2 = executor.submit(_fetch_diagnostic_sub_batch, cadre['title'], sub2, 2, seed_val, api_key)
 
         try:
-            res1 = f1.result(timeout=6.0) or []
+            res1 = f1.result(timeout=9.0) or []
         except Exception:
             res1 = []
         try:
-            res2 = f2.result(timeout=6.0) or []
+            res2 = f2.result(timeout=9.0) or []
         except Exception:
             res2 = []
 
@@ -428,11 +788,13 @@ def _generate_procedural_diagnostic(role_id):
     metadata = []
     q_counter = 0
 
-    # Generate 2 questions per competency to reach 10 questions
+    # Generate 2 distinct questions per competency to reach 10 questions
     for comp_id, scenario_list in competencies_map.items():
-        for rep in range(2):
+        chosen_scenarios = random.sample(scenario_list, min(2, len(scenario_list)))
+        if len(chosen_scenarios) < 2:
+            chosen_scenarios = chosen_scenarios * 2
+        for rep, scenario_def in enumerate(chosen_scenarios):
             q_counter += 1
-            scenario_def = random.choice(scenario_list)
             
             if scenario_def.get("calc"):
                 v = scenario_def["vars"]()
@@ -553,17 +915,15 @@ def generate_dynamic_diagnostic(role_id, force_fresh=False):
     """
     role_key = role_id if role_id in CADRE_INFO else "field_investigator_nsso"
 
-    # Always immediately trigger background replenishment to maintain buffer capacity
-    threading.Thread(target=_replenish_diagnostic_cache, args=(role_key,), daemon=True).start()
+    if not force_fresh:
+        with _CACHE_LOCK:
+            buf = _DIAGNOSTIC_WARM_BUFFERS.get(role_key)
+            if buf and len(buf) > 0:
+                cached = buf.popleft()
+                if cached and len(cached[0]) == 10:
+                    return cached
 
-    with _CACHE_LOCK:
-        buf = _DIAGNOSTIC_WARM_BUFFERS.get(role_key)
-        if buf and len(buf) > 0:
-            cached = buf.popleft()
-            if cached and len(cached[0]) == 10:
-                return cached
-
-    # If buffer was empty (e.g. repeated clicks), run parallel generator
+    # If force_fresh is requested or buffer was empty, run live Gemini generator
     api_key = get_gemini_api_key()
     if api_key and len(api_key.strip()) > 10:
         try:
@@ -1177,7 +1537,7 @@ Return ONLY valid JSON array:
         }
 
         try:
-            timeout_val = 6.0 if model_name == "gemini-3.1-flash-lite" else 3.5
+            timeout_val = 11.0 if model_name == "gemini-3.1-flash-lite" else 7.0
             res = _HTTP_SESSION.post(url, json=payload, timeout=timeout_val)
             if res.status_code == 200:
                 data = res.json()
@@ -1326,11 +1686,13 @@ def generate_dynamic_quiz(manual_id="manual_plfs_2026", custom_text="", difficul
             return llm_questions + extra
         return _generate_extractive_manual_quiz(custom_text, doc_name or "Uploaded Manual", diff_clean, count)
 
-    # Standard manuals (no custom text uploaded): serve from warm buffer
+    # Standard manuals (no custom text uploaded): serve from warm buffer unless force_fresh is requested
     cache_key = (manual_id, diff_clean)
-    with _QUIZ_CACHE_LOCK:
-        buf = _QUIZ_WARM_BUFFERS.get(cache_key)
-        cached_pool = buf.popleft() if (buf and len(buf) > 0) else None
+    cached_pool = None
+    if not force_fresh:
+        with _QUIZ_CACHE_LOCK:
+            buf = _QUIZ_WARM_BUFFERS.get(cache_key)
+            cached_pool = buf.popleft() if (buf and len(buf) > 0) else None
 
     # Trigger background replenishment for next request
     threading.Thread(target=_replenish_quiz_cache, args=(manual_id, diff_clean, max(count, 10), doc_name), daemon=True).start()

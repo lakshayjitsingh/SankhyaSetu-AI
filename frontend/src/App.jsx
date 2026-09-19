@@ -552,7 +552,7 @@ export default function App() {
   };
 
   // Option 1: Diagnostic Logic
-  const startDiagnostic = (fieldId, forceFresh = false) => {
+  const startDiagnostic = (fieldId, forceFresh = true) => {
     const roleToUse = fieldId || selectedField;
     setSelectedField(roleToUse);
     setDiagnosticResult(null);
