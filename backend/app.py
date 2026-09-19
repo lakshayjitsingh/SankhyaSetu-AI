@@ -403,7 +403,51 @@ def auth_login():
         return jsonify({"success": False, "error": "Email and password are required"}), 400
 
     result = db.verify_officer_login(email=email, password=password)
+    if result.get("pending_approval"):
+        return jsonify(result), 403
     status_code = 200 if result.get("success") else 401
+    return jsonify(result), status_code
+
+
+@app.route("/api/db/cadre/pending-approvals", methods=["GET"])
+def cadre_pending_approvals():
+    """Returns list of pending officer and/or supervisor registration requests."""
+    role = request.args.get("role", "all")
+    approvals = db.get_pending_cadre_approvals(target_role=role)
+    return jsonify({"success": True, "approvals": approvals}), 200
+
+
+@app.route("/api/db/cadre/approve", methods=["POST"])
+def cadre_approve_action():
+    """Approves or rejects a pending cadre account (officer or supervisor)."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    target_role = data.get("target_role", "officer")
+    reviewer = data.get("reviewer", "cadre_authority")
+    action = data.get("action", "approve")
+
+    if not email:
+        return jsonify({"success": False, "error": "Email is required."}), 400
+
+    result = db.approve_cadre_account(
+        email=email,
+        target_role=target_role,
+        reviewer_email=reviewer,
+        action=action
+    )
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/db/cadre/check-status", methods=["GET"])
+def cadre_check_status():
+    """Checks the activation status of an email across all cadre databases."""
+    email = request.args.get("email")
+    if not email:
+        return jsonify({"success": False, "error": "Email query param required."}), 400
+
+    result = db.check_account_status(email)
+    status_code = 200 if result.get("success") else 404
     return jsonify(result), status_code
 
 

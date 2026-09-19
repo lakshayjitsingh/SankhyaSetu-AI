@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Mail, UserX, UserCheck, Send, CheckCircle2, Clock, 
   AlertTriangle, Shield, ArrowRight, ArrowLeft, RefreshCw, Copy, Check,
   ChevronDown, Award, TrendingUp, Info, ShieldCheck, LogOut
 } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_BASE || (
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? "http://127.0.0.1:8000/api"
+    : (typeof window !== 'undefined' && window.location.hostname.endsWith('onrender.com') ? "/api" : "https://sankhyasetu-ai.onrender.com/api")
+);
 
 // Prototype Squad Data across the 3 Official MoSPI Fields
 const INITIAL_SQUADS = {
@@ -188,6 +194,62 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Live Cadre Registration Approvals State
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [isLoadingApprovals, setIsLoadingApprovals] = useState(false);
+  const [approvalActionLoading, setApprovalActionLoading] = useState({});
+
+  const fetchPendingApprovals = async () => {
+    setIsLoadingApprovals(true);
+    try {
+      const res = await fetch(`${API_BASE}/db/cadre/pending-approvals?role=officer`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPendingApprovals(data.approvals || []);
+      }
+    } catch (e) {
+      console.error("Error fetching pending approvals:", e);
+    } finally {
+      setIsLoadingApprovals(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingApprovals();
+    const interval = setInterval(fetchPendingApprovals, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleApproveOfficer = async (officerEmail, officerName, action = 'approve') => {
+    setApprovalActionLoading(prev => ({ ...prev, [officerEmail]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/db/cadre/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: officerEmail,
+          target_role: 'officer',
+          reviewer: activeSupervisor?.email || 'supervisor@mospi.gov.in',
+          action: action
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        triggerToast(action === 'approve' 
+          ? `Officer ${officerName} (${officerEmail}) approved and activated into Field Cadre!` 
+          : `Registration request for ${officerEmail} declined.`
+        );
+        fetchPendingApprovals();
+      } else {
+        triggerToast(data.error || 'Failed to update approval status.');
+      }
+    } catch (err) {
+      triggerToast('Network error while updating cadre approval.');
+    } finally {
+      setApprovalActionLoading(prev => ({ ...prev, [officerEmail]: false }));
+    }
+  };
+
   const currentSquad = squads[selectedFieldId] || squads.survey_supervisor_asuse;
 
   // Show auto-fading toast notification
@@ -321,6 +383,82 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         
+        {/* Pending Officer Registration Approvals Alert */}
+        {pendingApprovals.length > 0 && (
+          <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-5 shadow-md space-y-4 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold">
+                  <Clock className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-950 flex items-center gap-2">
+                    <span>Field Officer Registrations Awaiting Your Activation</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-full font-bold">
+                      {pendingApprovals.length} Pending
+                    </span>
+                  </h3>
+                  <p className="text-xs text-amber-800">
+                    New officers who have registered must be approved by a Supervisor before they can access the field deployment console.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fetchPendingApprovals}
+                disabled={isLoadingApprovals}
+                className="self-start sm:self-auto text-xs font-bold px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl transition flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApprovals ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {pendingApprovals.map((req) => (
+                <div key={req.id || req.email} className="bg-white border border-amber-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-900">{req.name}</span>
+                      <span className="text-[9px] font-mono bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold uppercase">
+                        Pending Activation
+                      </span>
+                    </div>
+                    <div className="text-xs font-mono text-[#ea8b21] font-bold">{req.email}</div>
+                    <div className="text-[11px] text-slate-600 font-medium">
+                      {req.role_name} • {req.department}
+                    </div>
+                    {req.requested_at && (
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        Registered: {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(req.requested_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      disabled={approvalActionLoading[req.email]}
+                      onClick={() => handleApproveOfficer(req.email, req.name, 'approve')}
+                      className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Approve & Activate</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={approvalActionLoading[req.email]}
+                      onClick={() => handleApproveOfficer(req.email, req.name, 'reject')}
+                      className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Supervisor Identity Banner & Option B Submission */}
         <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

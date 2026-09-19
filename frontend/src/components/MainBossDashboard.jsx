@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, Award, TrendingUp, AlertTriangle, CheckCircle2, Clock, 
   Send, Mail, Trash2, Eye, ArrowLeft, ArrowRight, RefreshCw, Check, 
   ChevronRight, X, ShieldCheck, LogOut
 } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_BASE || (
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? "http://127.0.0.1:8000/api"
+    : (typeof window !== 'undefined' && window.location.hostname.endsWith('onrender.com') ? "/api" : "https://sankhyasetu-ai.onrender.com/api")
+);
 
 // Prototype Supervisors Data across the 3 Fields
 const INITIAL_SUPERVISORS = [
@@ -78,6 +84,62 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
   const [purgeTarget, setPurgeTarget] = useState(null);
   const [purgeConfirmText, setPurgeConfirmText] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+
+  // Live Directorate Cadre Approvals State
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [isLoadingApprovals, setIsLoadingApprovals] = useState(false);
+  const [approvalActionLoading, setApprovalActionLoading] = useState({});
+
+  const fetchPendingApprovals = async () => {
+    setIsLoadingApprovals(true);
+    try {
+      const res = await fetch(`${API_BASE}/db/cadre/pending-approvals?role=all`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPendingApprovals(data.approvals || []);
+      }
+    } catch (e) {
+      console.error("Error fetching boss pending approvals:", e);
+    } finally {
+      setIsLoadingApprovals(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingApprovals();
+    const interval = setInterval(fetchPendingApprovals, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleApproveCadre = async (cadreEmail, cadreName, targetRole, action = 'approve') => {
+    setApprovalActionLoading(prev => ({ ...prev, [cadreEmail]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/db/cadre/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cadreEmail,
+          target_role: targetRole,
+          reviewer: activeBoss?.email || 'boss@gmail.com',
+          action: action
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        triggerToast(action === 'approve' 
+          ? `Cadre ${cadreName} (${cadreEmail}) authorized and activated by Directorate General!` 
+          : `Registration request for ${cadreEmail} declined.`
+        );
+        fetchPendingApprovals();
+      } else {
+        triggerToast(data.error || 'Failed to update authorization status.');
+      }
+    } catch (err) {
+      triggerToast('Network error while updating cadre authorization.');
+    } finally {
+      setApprovalActionLoading(prev => ({ ...prev, [cadreEmail]: false }));
+    }
+  };
 
   const triggerToast = (msg) => {
     setToastMessage(msg);
@@ -231,6 +293,86 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
             </div>
           </div>
         </div>
+
+        {/* Directorate Master Cadre Authorizations (Supervisors & Officers) */}
+        {pendingApprovals.length > 0 && (
+          <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-5 shadow-md space-y-4 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold">
+                  <Clock className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-950 flex items-center gap-2">
+                    <span>Directorate Cadre Authorizations Pending</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-full font-bold">
+                      {pendingApprovals.length} Requests
+                    </span>
+                  </h3>
+                  <p className="text-xs text-amber-800">
+                    High-level executive credential review. Authorize newly registered supervisors and field investigators to enable access.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fetchPendingApprovals}
+                disabled={isLoadingApprovals}
+                className="self-start sm:self-auto text-xs font-bold px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl transition flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApprovals ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {pendingApprovals.map((req) => (
+                <div key={req.id || req.email} className="bg-white border border-amber-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-900">{req.name}</span>
+                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase ${
+                        req.target_role === 'supervisor' 
+                          ? 'bg-purple-100 text-purple-900 border border-purple-200' 
+                          : 'bg-amber-100 text-amber-900 border border-amber-200'
+                      }`}>
+                        {req.target_role === 'supervisor' ? 'Supervisor Cadre' : 'Field Officer'}
+                      </span>
+                    </div>
+                    <div className="text-xs font-mono text-[#ea8b21] font-bold">{req.email}</div>
+                    <div className="text-[11px] text-slate-600 font-medium">
+                      {req.role_name} • {req.department}
+                    </div>
+                    {req.requested_at && (
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        Requested: {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(req.requested_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      disabled={approvalActionLoading[req.email]}
+                      onClick={() => handleApproveCadre(req.email, req.name, req.target_role, 'approve')}
+                      className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Authorize</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={approvalActionLoading[req.email]}
+                      onClick={() => handleApproveCadre(req.email, req.name, req.target_role, 'reject')}
+                      className="px-3 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Macro Ministry KPI Ribbon */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">

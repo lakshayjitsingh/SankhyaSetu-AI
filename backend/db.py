@@ -251,6 +251,28 @@ def init_db():
                     badge = EXCLUDED.badge;
             """)
 
+            # 6. Cadre Approval Requests & Status Verification
+            cur.execute("""
+                ALTER TABLE officers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+                UPDATE officers SET status = 'active' WHERE status IS NULL;
+
+                CREATE TABLE IF NOT EXISTS cadre_approval_requests (
+                    id SERIAL PRIMARY KEY,
+                    target_role VARCHAR(50) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    role_name VARCHAR(255),
+                    department VARCHAR(255),
+                    status VARCHAR(50) DEFAULT 'pending',
+                    requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    reviewed_by VARCHAR(255),
+                    reviewed_at TIMESTAMP WITH TIME ZONE,
+                    message TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_approval_status ON cadre_approval_requests(target_role, status);
+                CREATE INDEX IF NOT EXISTS idx_approval_email ON cadre_approval_requests(email);
+            """)
+
             logger.info("Neon database tables and seed accounts verified successfully.")
             return True
     except Exception as e:
@@ -342,13 +364,15 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
 
 
 def register_officer(email, password, name, role_id="field_investigator_nsso", role_name=None, department=None):
-    """Registers a new officer directly in Neon Cloud PostgreSQL with cryptographic salted scrypt hashing."""
+    """Registers a new officer directly in Neon Cloud PostgreSQL with status 'pending_approval'."""
     if not email or not password:
         return {"success": False, "error": "Email and password are required"}
 
     email = email.strip().lower()
     password = password.strip()
-    name = name.strip() if name else email.split("@")[0]
+    name = name.strip() if name else email.split("@")[0].replace(".", " ").title()
+    resolved_role_name = role_name or "Field Investigator (NSSO)"
+    resolved_department = department or "Field Operations Division"
 
     try:
         with get_db_cursor(commit=True) as cur:
@@ -356,23 +380,42 @@ def register_officer(email, password, name, role_id="field_investigator_nsso", r
                 return {"success": False, "error": "Database unavailable"}
 
             # Check if user already exists
-            cur.execute("SELECT id FROM officers WHERE email = %s;", (email,))
-            if cur.fetchone():
+            cur.execute("SELECT id, status FROM officers WHERE email = %s;", (email,))
+            existing = cur.fetchone()
+            if existing:
+                if existing[1] == 'pending_approval':
+                    return {
+                        "success": False,
+                        "pending_approval": True,
+                        "status": "pending_approval",
+                        "error": "Waiting for your supervisor or higher authorities to activate your email."
+                    }
                 return {"success": False, "error": "An account with this email is already registered. Please Sign In."}
 
             # Cryptographically hash password using salted scrypt
             hashed_password = generate_password_hash(password)
 
             cur.execute("""
-                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, last_active)
-                VALUES (%s, %s, %s, %s, %s, 'manual', %s, CURRENT_TIMESTAMP)
-                RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active;
-            """, (email, name, role_id, role_name or "Field Investigator (NSSO)", department or "Field Operations Division", hashed_password))
+                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, status, is_active, last_active)
+                VALUES (%s, %s, %s, %s, %s, 'manual', %s, 'pending_approval', FALSE, CURRENT_TIMESTAMP)
+                RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active, status;
+            """, (email, name, role_id, resolved_role_name, resolved_department, hashed_password))
 
             row = cur.fetchone()
+
+            # Record approval request for all supervisors
+            approval_msg = f"New Field Officer registration: {name} ({email}) registered for {resolved_role_name} in {resolved_department}."
+            cur.execute("""
+                INSERT INTO cadre_approval_requests (target_role, email, name, role_name, department, status, message)
+                VALUES ('officer', %s, %s, %s, %s, 'pending', %s);
+            """, (email, name, resolved_role_name, resolved_department, approval_msg))
+
             if row:
                 return {
                     "success": True,
+                    "pending_approval": True,
+                    "status": "pending_approval",
+                    "message": "Waiting for your supervisor or higher authorities to activate your email.",
                     "officer": {
                         "id": row[0],
                         "email": row[1],
@@ -382,7 +425,8 @@ def register_officer(email, password, name, role_id="field_investigator_nsso", r
                         "department": row[5],
                         "auth_provider": row[6],
                         "created_at": row[7].isoformat() if row[7] else None,
-                        "last_active": row[8].isoformat() if row[8] else None
+                        "last_active": row[8].isoformat() if row[8] else None,
+                        "status": row[9]
                     }
                 }
     except Exception as e:
@@ -404,7 +448,7 @@ def verify_officer_login(email, password):
         with get_db_cursor(commit=True) as cur:
             if cur is not None:
                 cur.execute("""
-                    SELECT id, email, password, name, role, cadre_title, department, badge
+                    SELECT id, email, password, name, role, cadre_title, department, badge, status
                     FROM directorate_cadres
                     WHERE email = %s;
                 """, (email,))
@@ -417,6 +461,25 @@ def verify_officer_login(email, password):
                     else:
                         valid = (db_pwd == password)
                     if valid or password == "123456":
+                        status = boss_row[8] if len(boss_row) > 8 and boss_row[8] else "active"
+                        if status == "pending_approval":
+                            return {
+                                "success": False,
+                                "pending_approval": True,
+                                "status": "pending_approval",
+                                "error": "Waiting for higher authorities to activate your email.",
+                                "officer": {
+                                    "id": boss_row[0],
+                                    "email": boss_row[1],
+                                    "name": boss_row[3],
+                                    "role": "boss",
+                                    "portal": "boss",
+                                    "role_name": boss_row[5],
+                                    "department": boss_row[6],
+                                    "target_role": "boss",
+                                    "status": "pending_approval"
+                                }
+                            }
                         return {
                             "success": True,
                             "officer": {
@@ -429,6 +492,7 @@ def verify_officer_login(email, password):
                                 "role_name": boss_row[5],
                                 "department": boss_row[6],
                                 "badge": boss_row[7],
+                                "status": status,
                                 "is_directorate": True
                             }
                         }
@@ -455,6 +519,25 @@ def verify_officer_login(email, password):
                     else:
                         valid = (db_pwd == password)
                     if valid or password == "123456":
+                        status = sup_row[9] if len(sup_row) > 9 and sup_row[9] else "active"
+                        if status == "pending_approval":
+                            return {
+                                "success": False,
+                                "pending_approval": True,
+                                "status": "pending_approval",
+                                "error": "Waiting for the Directorate General or higher authorities to activate your email.",
+                                "officer": {
+                                    "id": sup_row[0],
+                                    "email": sup_row[1],
+                                    "name": sup_row[3],
+                                    "role": "supervisor",
+                                    "portal": "supervisor",
+                                    "role_name": sup_row[5],
+                                    "department": sup_row[6],
+                                    "target_role": "supervisor",
+                                    "status": "pending_approval"
+                                }
+                            }
                         return {
                             "success": True,
                             "officer": {
@@ -467,7 +550,7 @@ def verify_officer_login(email, password):
                                 "role_name": sup_row[5],
                                 "department": sup_row[6],
                                 "badge": sup_row[8],
-                                "status": sup_row[9],
+                                "status": status,
                                 "is_supervisory": True
                             }
                         }
@@ -483,7 +566,7 @@ def verify_officer_login(email, password):
                 return {"success": False, "error": "Database unavailable"}
 
             cur.execute("""
-                SELECT id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active
+                SELECT id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active, status
                 FROM officers
                 WHERE email = %s;
             """, (email,))
@@ -512,6 +595,25 @@ def verify_officer_login(email, password):
             if not is_valid:
                 return {"success": False, "error": "Incorrect password. Please try again."}
 
+            status = row[10] if len(row) > 10 and row[10] else "active"
+            if status == "pending_approval":
+                return {
+                    "success": False,
+                    "pending_approval": True,
+                    "status": "pending_approval",
+                    "error": "Waiting for your supervisor or higher authorities to activate your email.",
+                    "officer": {
+                        "id": row[0],
+                        "email": row[1],
+                        "name": row[2],
+                        "role_id": row[3],
+                        "role_name": row[4],
+                        "department": row[5],
+                        "target_role": "officer",
+                        "status": "pending_approval"
+                    }
+                }
+
             # If legacy plain text matched, seamlessly upgrade in Neon to modern scrypt hash
             if needs_hash_upgrade:
                 new_hash = generate_password_hash(password)
@@ -530,7 +632,8 @@ def verify_officer_login(email, password):
                     "department": row[5],
                     "auth_provider": row[6],
                     "created_at": row[8].isoformat() if row[8] else None,
-                    "last_active": row[9].isoformat() if row[9] else None
+                    "last_active": row[9].isoformat() if row[9] else None,
+                    "status": status
                 }
             }
     except Exception as e:
@@ -783,7 +886,7 @@ def get_all_officers_stats():
 
 
 def register_supervisor(email, password, name=None, field_id="survey_supervisor_asuse", department="Field Operations Division"):
-    """Registers a new supervisor directly into the dedicated supervisors table in Neon PostgreSQL."""
+    """Registers a new supervisor directly into the dedicated supervisors table in Neon PostgreSQL with status 'pending_approval'."""
     if not email or not password:
         return {"success": False, "error": "Email and password are required"}
 
@@ -797,19 +900,38 @@ def register_supervisor(email, password, name=None, field_id="survey_supervisor_
             if cur is None:
                 return {"success": False, "error": "Database unavailable"}
 
+            cur.execute("SELECT id, status FROM supervisors WHERE email = %s;", (email,))
+            existing = cur.fetchone()
+            if existing:
+                if existing[1] == 'pending_approval':
+                    return {
+                        "success": False,
+                        "pending_approval": True,
+                        "status": "pending_approval",
+                        "error": "Waiting for the Directorate General or higher authorities to activate your email."
+                    }
+                return {"success": False, "error": "A supervisor with this email is already registered. Please Sign In."}
+
             cur.execute("""
                 INSERT INTO supervisors (email, password, name, role, cadre_title, department, field_id, badge, auth_provider, status)
-                VALUES (%s, %s, %s, 'supervisor', 'Senior Statistical Officer (SSO)', %s, %s, 'SSO-CADRE', 'manual', 'active')
-                ON CONFLICT (email) DO UPDATE SET
-                    password = EXCLUDED.password,
-                    name = EXCLUDED.name
+                VALUES (%s, %s, %s, 'supervisor', 'Senior Statistical Officer (SSO)', %s, %s, 'SSO-CADRE', 'manual', 'pending_approval')
                 RETURNING id, email, name, role, cadre_title, department, field_id, badge, status;
             """, (email, pwd_hash, name, department, field_id))
 
             row = cur.fetchone()
+
+            # Record approval request for Boss (Directorate General)
+            approval_msg = f"New Supervisory Cadre registration: {name} ({email}) registered for Senior Statistical Officer in {department}."
+            cur.execute("""
+                INSERT INTO cadre_approval_requests (target_role, email, name, role_name, department, status, message)
+                VALUES ('supervisor', %s, %s, 'Senior Statistical Officer (SSO)', %s, 'pending', %s);
+            """, (email, name, department, approval_msg))
+
             return {
                 "success": True,
-                "message": "Supervisory account registered successfully in dedicated supervisors table.",
+                "pending_approval": True,
+                "status": "pending_approval",
+                "message": "Waiting for the Directorate General or higher authorities to activate your email.",
                 "officer": {
                     "id": row[0],
                     "email": row[1],
@@ -1010,5 +1132,114 @@ def sync_boss_google(email, name=None):
                 "is_directorate": True
             }
         }
+
+
+def get_pending_cadre_approvals(target_role=None):
+    """Retrieves all pending registrations awaiting approval for supervisors or Directorate General."""
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return []
+            if target_role and target_role != "all":
+                cur.execute("""
+                    SELECT id, target_role, email, name, role_name, department, status, requested_at, message
+                    FROM cadre_approval_requests
+                    WHERE status = 'pending' AND target_role = %s
+                    ORDER BY requested_at DESC;
+                """, (target_role,))
+            else:
+                cur.execute("""
+                    SELECT id, target_role, email, name, role_name, department, status, requested_at, message
+                    FROM cadre_approval_requests
+                    WHERE status = 'pending'
+                    ORDER BY requested_at DESC;
+                """)
+            rows = cur.fetchall()
+            approvals = []
+            for r in rows:
+                approvals.append({
+                    "id": r[0],
+                    "target_role": r[1],
+                    "email": r[2],
+                    "name": r[3],
+                    "role_name": r[4],
+                    "department": r[5],
+                    "status": r[6],
+                    "requested_at": r[7].isoformat() if r[7] else None,
+                    "message": r[8]
+                })
+            return approvals
+    except Exception as e:
+        logger.error(f"Error fetching pending cadre approvals: {e}")
+        return []
+
+
+def approve_cadre_account(email, target_role="officer", reviewer_email=None, action="approve"):
+    """Approves or rejects a pending officer or supervisor registration."""
+    if not email:
+        return {"success": False, "error": "Email is required."}
+
+    email = email.strip().lower()
+    target_role = (target_role or "officer").strip().lower()
+    new_status = "active" if action == "approve" else "rejected"
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return {"success": False, "error": "Database unavailable."}
+
+            if target_role == "officer":
+                cur.execute("""
+                    UPDATE officers
+                    SET status = %s, is_active = %s
+                    WHERE email = %s;
+                """, (new_status, (action == "approve"), email))
+            elif target_role == "supervisor":
+                cur.execute("""
+                    UPDATE supervisors
+                    SET status = %s
+                    WHERE email = %s;
+                """, (new_status, email))
+
+            cur.execute("""
+                UPDATE cadre_approval_requests
+                SET status = %s, reviewed_by = %s, reviewed_at = CURRENT_TIMESTAMP
+                WHERE email = %s AND status = 'pending';
+            """, (new_status, reviewer_email or "cadre_authority", email))
+
+            return {
+                "success": True,
+                "message": f"{target_role.capitalize()} account ({email}) {'activated successfully' if action == 'approve' else 'rejected'}."
+            }
+    except Exception as e:
+        logger.error(f"Error approving cadre account: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def check_account_status(email):
+    """Checks the current activation status of an officer or supervisor account."""
+    if not email:
+        return {"success": False, "error": "Email required"}
+    email = email.strip().lower()
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return {"success": False, "error": "Database unavailable"}
+
+            for tbl, role in [("officers", "officer"), ("supervisors", "supervisor"), ("directorate_cadres", "boss")]:
+                cur.execute(f"SELECT id, name, status FROM {tbl} WHERE email = %s;", (email,))
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "success": True,
+                        "email": email,
+                        "name": row[1],
+                        "role": role,
+                        "status": row[2] or "active"
+                    }
+            return {"success": False, "error": "Account not found"}
+    except Exception as e:
+        logger.error(f"Error checking status for {email}: {e}")
+        return {"success": False, "error": str(e)}
 
 

@@ -4,7 +4,7 @@ import {
   ShieldCheck, ShieldAlert, Clock, BookOpen, LogOut, Sparkles, User, 
   ArrowLeft, Check, ChevronRight, X, ExternalLink, Settings, Key,
   Home, BarChart3, FileText, Award, TrendingUp, RefreshCw, Layers, CheckCircle,
-  Menu, Eye, EyeOff, Users, Shield, Building2
+  Menu, Eye, EyeOff, Users, Shield, Building2, Info
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
@@ -323,6 +323,35 @@ export default function App() {
   const [showForgotNewPass, setShowForgotNewPass] = useState(false);
   const [showForgotConfirmPass, setShowForgotConfirmPass] = useState(false);
 
+  // Cadre Activation Pending Modal & Live Checker
+  const [pendingActivationData, setPendingActivationData] = useState(null);
+  const [activationCheckNotice, setActivationCheckNotice] = useState('');
+  const [isCheckingActivation, setIsCheckingActivation] = useState(false);
+
+  const handleCheckActivationStatus = async () => {
+    if (!pendingActivationData?.email) return;
+    setIsCheckingActivation(true);
+    setActivationCheckNotice('');
+    try {
+      const res = await fetch(`${API_BASE}/db/cadre/check-status?email=${encodeURIComponent(pendingActivationData.email)}`);
+      const data = await res.json();
+      if (res.ok && data.success && data.status === 'active') {
+        setActivationCheckNotice('✓ Account approved and activated! Please sign in with your credentials.');
+        setTimeout(() => {
+          setPendingActivationData(null);
+          setActivationCheckNotice('');
+        }, 2200);
+      } else {
+        setActivationCheckNotice('⏳ Still awaiting review. Notifications have been dispatched to your supervisors.');
+      }
+    } catch (err) {
+      console.error("Error checking activation status:", err);
+      setActivationCheckNotice('Network error connecting to security server. Please try again.');
+    } finally {
+      setIsCheckingActivation(false);
+    }
+  };
+
   // Per-User Activity History & Improvement Tracking
   const [userHistory, setUserHistory] = useState([]);
 
@@ -621,6 +650,21 @@ export default function App() {
         });
 
         const data = await response.json();
+        if (data.pending_approval) {
+          setPendingActivationData({
+            email: trimmedEmail,
+            name: derivedName,
+            cadreTitle: activeF?.designation || 'Field Investigator (NSSO)',
+            department: activeF?.title || 'Field Operations Division',
+            roleType: 'officer',
+            message: data.message || 'Waiting for your supervisor or higher authorities to activate your email.'
+          });
+          setAuthError(data.message || 'Waiting for your supervisor or higher authorities to activate your email.');
+          setDirectPassword('');
+          setIsAuthenticating(false);
+          return;
+        }
+
         if (!response.ok || !data.success) {
           setAuthError(data.error || 'Registration failed. Please try again.');
           setIsAuthenticating(false);
@@ -656,6 +700,20 @@ export default function App() {
         });
 
         const data = await response.json();
+        if (data.pending_approval) {
+          setPendingActivationData({
+            email: trimmedEmail,
+            name: data.officer?.name || trimmedEmail.split('@')[0],
+            cadreTitle: data.officer?.role_name || 'Field Officer',
+            department: data.officer?.department || 'Field Operations Division',
+            roleType: data.officer?.portal || 'officer',
+            message: data.error || 'Waiting for your supervisor or higher authorities to activate your email.'
+          });
+          setAuthError(data.error || 'Waiting for your supervisor or higher authorities to activate your email.');
+          setIsAuthenticating(false);
+          return;
+        }
+
         if (!response.ok || !data.success) {
           setAuthError(data.error || 'Invalid credentials. Please check your email and password.');
           setIsAuthenticating(false);
@@ -839,6 +897,21 @@ export default function App() {
         });
 
         const data = await response.json();
+        if (data.pending_approval) {
+          setPendingActivationData({
+            email: trimmedEmail,
+            name: derivedName,
+            cadreTitle: 'Senior Statistical Officer (SSO)',
+            department: 'Field Operations Division',
+            roleType: 'supervisor',
+            message: data.message || 'Waiting for the Directorate General or higher authorities to activate your email.'
+          });
+          setSupervisorAuthError(data.message || 'Waiting for the Directorate General or higher authorities to activate your email.');
+          setSupervisorPassword('');
+          setIsSupervisorAuthenticating(false);
+          return;
+        }
+
         if (!response.ok || !data.success) {
           setSupervisorAuthError(data.error || 'Supervisor registration failed. Please try again.');
           setIsSupervisorAuthenticating(false);
@@ -872,6 +945,20 @@ export default function App() {
         });
 
         const data = await response.json();
+        if (data.pending_approval) {
+          setPendingActivationData({
+            email: trimmedEmail,
+            name: data.officer?.name || 'Supervisor',
+            cadreTitle: data.officer?.role_name || 'Senior Statistical Officer (SSO)',
+            department: data.officer?.department || 'Field Operations Division',
+            roleType: 'supervisor',
+            message: data.error || 'Waiting for the Directorate General or higher authorities to activate your email.'
+          });
+          setSupervisorAuthError(data.error || 'Waiting for the Directorate General or higher authorities to activate your email.');
+          setIsSupervisorAuthenticating(false);
+          return;
+        }
+
         if (!response.ok || !data.success) {
           setSupervisorAuthError(data.error || 'Invalid supervisor credentials.');
           setIsSupervisorAuthenticating(false);
@@ -2271,6 +2358,112 @@ export default function App() {
                   </button>
                 </div>
               )}
+
+            </div>
+          </div>
+        )}
+
+        {/* Cadre Activation Pending Modal */}
+        {pendingActivationData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-[#ebdcc8] pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
+                      <Clock className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full inline-block">
+                        Awaiting Cadre Activation
+                      </span>
+                      <h2 className="text-lg font-black text-slate-900">
+                        {pendingActivationData.roleType === 'supervisor' 
+                          ? "Supervisory Cadre Approval" 
+                          : "Field Officer Cadre Approval"}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingActivationData(null);
+                    setActivationCheckNotice('');
+                  }}
+                  className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status Banner */}
+              <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Waiting for the supervisor or higher authorities to activate your email</span>
+                </div>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Your registration has been recorded in the central MoSPI database. An official authorization request has been dispatched to all active Supervisors and the Directorate General. You will gain access once your cadre identity is approved.
+                </p>
+              </div>
+
+              {/* Account Details Box */}
+              <div className="bg-[#faf5ec]/60 border border-[#ebdcc8] rounded-2xl p-4 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-[#ebdcc8]/60">
+                  <span className="text-slate-600 font-medium">Registered Name:</span>
+                  <span className="font-bold text-slate-900">{pendingActivationData.name}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#ebdcc8]/60">
+                  <span className="text-slate-600 font-medium">Official Email:</span>
+                  <span className="font-mono font-bold text-[#ea8b21]">{pendingActivationData.email}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#ebdcc8]/60">
+                  <span className="text-slate-600 font-medium">Requested Cadre:</span>
+                  <span className="font-bold text-slate-900">{pendingActivationData.cadreTitle}</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-600 font-medium">Department:</span>
+                  <span className="font-bold text-slate-800">{pendingActivationData.department}</span>
+                </div>
+              </div>
+
+              {/* Live Status Notice */}
+              {activationCheckNotice && (
+                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in ${
+                  activationCheckNotice.includes('✓') 
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                }`}>
+                  <Info className="w-4 h-4 shrink-0" />
+                  <span>{activationCheckNotice}</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingActivationData(null);
+                    setActivationCheckNotice('');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+                >
+                  Back to Sign In
+                </button>
+                <button
+                  type="button"
+                  disabled={isCheckingActivation}
+                  onClick={handleCheckActivationStatus}
+                  className={`w-full sm:w-auto px-5 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center justify-center gap-2 ${isCheckingActivation ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isCheckingActivation ? 'animate-spin' : ''}`} />
+                  <span>{isCheckingActivation ? "Checking Status..." : "Check Activation Status"}</span>
+                </button>
+              </div>
 
             </div>
           </div>
