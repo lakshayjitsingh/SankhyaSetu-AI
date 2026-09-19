@@ -341,6 +341,14 @@ export default function App() {
       .catch(err => console.error("Error fetching manuals:", err));
   }, []);
 
+  // Ensure Directorate General (Boss) credentials default to boss@gmail.com / 123456
+  useEffect(() => {
+    if (!user) {
+      if (!bossEmail) setBossEmail('boss@gmail.com');
+      if (!bossPassword) setBossPassword('123456');
+    }
+  }, [user]);
+
   // Synchronize officer profile to Neon Cloud PostgreSQL
   const syncOfficerProfileToCloud = async (u) => {
     if (!u?.email) return;
@@ -958,8 +966,8 @@ export default function App() {
       localStorage.setItem('sankhya_user', JSON.stringify(bossData));
       localStorage.setItem('sankhya_last_activity', Date.now().toString());
       setInactivityNotice('');
-      setBossPassword('');
-      setBossEmail('');
+      setBossPassword('123456');
+      setBossEmail('boss@gmail.com');
       setIsBossAuthenticating(false);
     } catch (err) {
       console.error("Boss auth error:", err);
@@ -1673,6 +1681,7 @@ export default function App() {
                     <input
                       type="email"
                       required
+                      autoComplete="off"
                       placeholder="supervisor@mospi.gov.in"
                       value={supervisorEmail}
                       onChange={(e) => {
@@ -1685,12 +1694,15 @@ export default function App() {
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] font-bold text-slate-900 block">Access Password</label>
+                      <label className="text-[11px] font-bold text-slate-900 block">
+                        {isSupervisorSignUp ? "Password (min. 6 chars)" : "Password"}
+                      </label>
                     </div>
                     <div className="relative">
                       <input
                         type={showSupervisorPassword ? "text" : "password"}
                         required
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         value={supervisorPassword}
                         onChange={(e) => {
@@ -1822,7 +1834,7 @@ export default function App() {
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] font-bold text-slate-900 block">Secret Key / Password</label>
+                      <label className="text-[11px] font-bold text-slate-900 block">Password</label>
                     </div>
                     <div className="relative">
                       <input
