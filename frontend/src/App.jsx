@@ -341,40 +341,26 @@ export default function App() {
       // Step 1: Immediate local render (sub-5ms)
       if (savedHistory) {
         try {
-          setUserHistory(JSON.parse(savedHistory));
-        } catch (e) {}
+          const parsed = JSON.parse(savedHistory);
+          // Filter out legacy mock/dummy entries if present in local cache
+          const cleanHistory = Array.isArray(parsed)
+            ? parsed.filter(item => item && item.id !== 'hist-1' && item.id !== 'hist-2')
+            : [];
+          setUserHistory(cleanHistory);
+          localStorage.setItem(historyKey, JSON.stringify(cleanHistory));
+        } catch (e) {
+          setUserHistory([]);
+        }
       } else {
-        const initialHistory = [
-          {
-            id: 'hist-1',
-            type: 'diagnostic',
-            title: 'Baseline Diagnostic Assessment',
-            field: 'Field Surveys & Household Data (NSSO / PLFS)',
-            score: 55,
-            status: '2 Gaps Identified',
-            date: 'Yesterday, 04:30 PM',
-            improvementDelta: '+0%'
-          },
-          {
-            id: 'hist-2',
-            type: 'quiz',
-            title: 'PLFS Manual Quiz (Field Dilemmas)',
-            field: 'Field Sampling & Revisit Protocols',
-            score: 75,
-            status: 'Passed (3/4 Correct)',
-            date: 'Today, 10:15 AM',
-            improvementDelta: '+20%'
-          }
-        ];
-        localStorage.setItem(historyKey, JSON.stringify(initialHistory));
-        setUserHistory(initialHistory);
+        // New user starts with clean empty slate (0 attempts)
+        setUserHistory([]);
       }
 
       // Step 2: Background Cloud Fetch from Neon PostgreSQL
       fetch(`${API_BASE}/db/history?email=${encodeURIComponent(user.email.toLowerCase())}`)
         .then(res => res.json())
         .then(data => {
-          if (data?.success && Array.isArray(data.history) && data.history.length > 0) {
+          if (data?.success && Array.isArray(data.history)) {
             const dbFormatted = data.history.map((h, idx) => ({
               id: `db-${h.id}`,
               type: h.role_id ? 'diagnostic' : 'quiz',
@@ -388,9 +374,9 @@ export default function App() {
             })).reverse();
 
             setUserHistory(prev => {
-              // Combine DB history with local history, avoiding duplicate IDs
+              // Combine DB history with local history, avoiding duplicate IDs and dummy items
               const existingIds = new Set(dbFormatted.map(item => item.id));
-              const localUnsynced = (prev || []).filter(item => !existingIds.has(item.id));
+              const localUnsynced = (prev || []).filter(item => !existingIds.has(item.id) && item.id !== 'hist-1' && item.id !== 'hist-2');
               const merged = [...dbFormatted, ...localUnsynced];
               localStorage.setItem(historyKey, JSON.stringify(merged));
               return merged;
