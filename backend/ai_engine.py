@@ -629,6 +629,7 @@ DIAGNOSTIC_SCENARIOS = {
         ]
     }
 }
+DIAGNOSTIC_SCENARIOS["statistical_officer_cso"] = DIAGNOSTIC_SCENARIOS["junior_statistical_officer_cso"]
 
 # Diagnostic generation logic defined below with warm caching after helper functions
 
@@ -667,6 +668,7 @@ CADRE_INFO = {
         ]
     }
 }
+CADRE_INFO["statistical_officer_cso"] = CADRE_INFO["junior_statistical_officer_cso"]
 
 def _fetch_diagnostic_sub_batch(cadre_title, comp_subset, batch_idx, seed_val, api_key):
     """
@@ -710,7 +712,7 @@ Return ONLY a valid JSON array of 5 objects:
             }
         }
         try:
-            res = _HTTP_SESSION.post(url, json=payload, timeout=8.5)
+            res = _HTTP_SESSION.post(url, json=payload, timeout=14.0)
             if res.status_code == 200:
                 raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
                 parsed = json.loads(raw)
@@ -742,11 +744,11 @@ def call_gemini_diagnostic_generator(role_id):
         f2 = executor.submit(_fetch_diagnostic_sub_batch, cadre['title'], sub2, 2, seed_val, api_key)
 
         try:
-            res1 = f1.result(timeout=9.0) or []
+            res1 = f1.result(timeout=15.0) or []
         except Exception:
             res1 = []
         try:
-            res2 = f2.result(timeout=9.0) or []
+            res2 = f2.result(timeout=15.0) or []
         except Exception:
             res2 = []
 
@@ -1537,7 +1539,7 @@ Return ONLY valid JSON array:
         }
 
         try:
-            timeout_val = 11.0 if model_name == "gemini-3.1-flash-lite" else 7.0
+            timeout_val = 15.0
             res = _HTTP_SESSION.post(url, json=payload, timeout=timeout_val)
             if res.status_code == 200:
                 data = res.json()
@@ -1652,7 +1654,7 @@ def call_gemini_quiz_generator(manual_id, custom_text, difficulty, count=5, doc_
         all_results = []
         for f in futures:
             try:
-                res = f.result(timeout=8.0)
+                res = f.result(timeout=16.0)
                 if res:
                     all_results.extend(res)
             except Exception as e:

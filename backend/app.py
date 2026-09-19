@@ -59,8 +59,12 @@ def get_roles():
 @app.route("/api/roles/<role_id>/diagnostic", methods=["GET"])
 def get_diagnostic(role_id):
     session_id = f"diag_{uuid.uuid4().hex[:8]}"
+    if role_id in ["statistical_officer_cso", "junior_statistical_officer_cso"]:
+        canonical_role_id = "junior_statistical_officer_cso"
+    else:
+        canonical_role_id = role_id
     force_fresh = request.args.get("fresh") == "true" or request.args.get("regenerate") == "true"
-    questions, metadata = ai_engine.generate_dynamic_diagnostic(role_id, force_fresh=force_fresh)
+    questions, metadata = ai_engine.generate_dynamic_diagnostic(canonical_role_id, force_fresh=force_fresh)
     ACTIVE_DIAGNOSTIC_SESSIONS[session_id] = metadata
     return jsonify({
         "role_id": role_id,
@@ -73,15 +77,19 @@ def get_diagnostic(role_id):
 def evaluate_diagnostic():
     data = request.json or {}
     role_id = data.get("role_id", "field_investigator_nsso")
+    if role_id in ["statistical_officer_cso", "junior_statistical_officer_cso"]:
+        canonical_role_id = "junior_statistical_officer_cso"
+    else:
+        canonical_role_id = role_id
     session_id = data.get("session_id", "")
     user_answers = data.get("answers", {})
 
     # Retrieve dynamically generated questions metadata
     meta_list = ACTIVE_DIAGNOSTIC_SESSIONS.get(session_id)
     if not meta_list:
-        meta_list = DIAGNOSTIC_QUESTIONS.get(role_id, DIAGNOSTIC_QUESTIONS["field_investigator_nsso"])
+        meta_list = DIAGNOSTIC_QUESTIONS.get(canonical_role_id, DIAGNOSTIC_QUESTIONS.get("field_investigator_nsso", []))
 
-    role_info = next((r for r in MOSPI_ROLES if r["id"] == role_id), MOSPI_ROLES[0])
+    role_info = next((r for r in MOSPI_ROLES if r["id"] == canonical_role_id or (canonical_role_id in ["junior_statistical_officer_cso", "statistical_officer_cso"] and r["id"] in ["junior_statistical_officer_cso", "statistical_officer_cso"])), MOSPI_ROLES[0])
     
     competency_scores = {}
     total_correct = 0

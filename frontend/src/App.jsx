@@ -747,7 +747,7 @@ export default function App() {
   };
 
   // Option 1: Diagnostic Logic
-  const startDiagnostic = (fieldId, forceFresh = true) => {
+  const startDiagnostic = (fieldId, forceFresh = false) => {
     const roleToUse = fieldId || selectedField;
     setSelectedField(roleToUse);
     setDiagnosticResult(null);
@@ -758,7 +758,7 @@ export default function App() {
     const startTime = Date.now();
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 14000);
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     fetch(`${API_BASE}/roles/${roleToUse}/diagnostic${freshQuery}`, { signal: controller.signal })
       .then(res => res.json())
@@ -824,7 +824,7 @@ export default function App() {
     const startTime = Date.now();
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 14000);
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
     const isForceFresh = typeof forceFresh === 'boolean' ? forceFresh : true;
 
     try {
@@ -1495,6 +1495,7 @@ export default function App() {
                   <div 
                     onClick={() => {
                       setActiveTab('upload_quiz');
+                      if (!quizQuestions.length) handleGenerateQuiz(false);
                     }}
                     className="bg-white border border-[#ebdcc8] rounded-3xl p-7 shadow-xs flex flex-col justify-between hover:shadow-lg hover:border-[#ea8b21] hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
                   >
