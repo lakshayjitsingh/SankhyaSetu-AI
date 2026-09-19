@@ -1378,13 +1378,10 @@ export default function App() {
             {/* ========================================================================= */}
             <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#ea8b21]/5 flex flex-col justify-between space-y-5 animate-in fade-in duration-200">
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
+                <div className="flex items-center justify-start">
                   <div className="w-12 h-12 rounded-2xl bg-[#ea8b21]/10 border border-[#ea8b21]/30 flex items-center justify-center text-[#ea8b21] shadow-2xs">
                     <User className="w-6 h-6" />
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full">
-                    Cadre 1 • Field Operations
-                  </span>
                 </div>
 
                 <div className="min-h-[2rem] flex items-center">
@@ -1535,13 +1532,10 @@ export default function App() {
             {/* ========================================================================= */}
             <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#ea8b21]/5 flex flex-col justify-between space-y-5 animate-in fade-in duration-200">
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
+                <div className="flex items-center justify-start">
                   <div className="w-12 h-12 rounded-2xl bg-[#ea8b21]/10 border border-[#ea8b21]/30 flex items-center justify-center text-[#ea8b21] shadow-2xs">
                     <Users className="w-6 h-6" />
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full">
-                    Cadre 2 • Squad Leads (SSO)
-                  </span>
                 </div>
 
                 <div className="min-h-[2rem] flex items-center">
@@ -1610,26 +1604,6 @@ export default function App() {
                     {isSupervisorAuthenticating ? "Verifying Cadre..." : "Sign In to Supervisory Console"}
                   </button>
                 </form>
-
-                {/* Divider */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <div className="w-full border-t border-[#ebdcc8]"></div>
-                  <span className="absolute bg-white px-2.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    authorization
-                  </span>
-                </div>
-
-                {/* Clearance Notice Pill */}
-                <div className="py-2 px-3 bg-[#faf5ec] border border-[#ebdcc8] rounded-xl text-center">
-                  <span className="text-[10.5px] font-semibold text-slate-700 flex items-center justify-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#ea8b21] shrink-0" />
-                    <span>Approved by Directorate General</span>
-                  </span>
-                </div>
-
-                <div className="text-center text-[11px] text-slate-500 font-medium pt-0.5">
-                  <p>Credentials allocated upon DG approval</p>
-                </div>
               </div>
 
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
@@ -1643,13 +1617,10 @@ export default function App() {
             {/* ========================================================================= */}
             <div className="bg-white border border-[#ebdcc8] rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#ea8b21]/5 flex flex-col justify-between space-y-5 animate-in fade-in duration-200">
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
+                <div className="flex items-center justify-start">
                   <div className="w-12 h-12 rounded-2xl bg-[#ea8b21]/10 border border-[#ea8b21]/30 flex items-center justify-center text-[#ea8b21] shadow-2xs">
                     <Award className="w-6 h-6" />
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 bg-[#ea8b21]/10 text-[#ea8b21] border border-[#ea8b21]/30 rounded-full">
-                    Cadre 3 • Ministry HQ Command
-                  </span>
                 </div>
 
                 <div className="min-h-[2rem] flex items-center">
@@ -1718,32 +1689,6 @@ export default function App() {
                     {isBossAuthenticating ? "Accessing Directorate HQ..." : "Sign In to Directorate HQ"}
                   </button>
                 </form>
-
-                {/* Divider */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <div className="w-full border-t border-[#ebdcc8]"></div>
-                  <span className="absolute bg-white px-2.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    demo key
-                  </span>
-                </div>
-
-                {/* 1-Click Demo Key Helper */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBossEmail('boss@gmail.com');
-                    setBossPassword('123456');
-                    if (bossAuthError) setBossAuthError('');
-                  }}
-                  className="w-full py-2 px-3 bg-[#faf5ec] hover:bg-[#f3eadc] border border-[#ebdcc8] rounded-xl text-[10.5px] font-bold text-[#ea8b21] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Key className="w-3.5 h-3.5 shrink-0" />
-                  <span>Auto-Fill Demo Key (boss@gmail.com / 123456)</span>
-                </button>
-
-                <div className="text-center text-[11px] text-slate-500 font-medium pt-0.5">
-                  <p>Single-Seat Executive Command</p>
-                </div>
               </div>
 
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
