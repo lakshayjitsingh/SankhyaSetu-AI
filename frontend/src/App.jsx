@@ -268,6 +268,18 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Change Password Modal States (for direct manual accounts)
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmPassInput, setConfirmPassInput] = useState('');
+  const [changePassError, setChangePassError] = useState('');
+  const [changePassSuccess, setChangePassSuccess] = useState('');
+  const [isSubmittingChangePass, setIsSubmittingChangePass] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+
   // Per-User Activity History & Improvement Tracking
   const [userHistory, setUserHistory] = useState([]);
 
@@ -621,6 +633,68 @@ export default function App() {
       setAuthError('Connection to authentication server failed. Please verify your connection.');
     } finally {
       setIsAuthenticating(false);
+    }
+  };
+
+  // Change Password for Direct Email / Password Accounts
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangePassError('');
+    setChangePassSuccess('');
+
+    const trimmedCurrent = currentPassInput.trim();
+    const trimmedNew = newPassInput.trim();
+    const trimmedConfirm = confirmPassInput.trim();
+
+    if (!trimmedCurrent) {
+      setChangePassError('Please enter your current password.');
+      return;
+    }
+
+    if (!trimmedNew || trimmedNew.length < 6) {
+      setChangePassError('New password must be at least 6 characters.');
+      return;
+    }
+
+    if (trimmedNew === trimmedCurrent) {
+      setChangePassError('New password must be different from current password.');
+      return;
+    }
+
+    if (trimmedNew !== trimmedConfirm) {
+      setChangePassError('New passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setIsSubmittingChangePass(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/db/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email.toLowerCase(),
+          current_password: trimmedCurrent,
+          new_password: trimmedNew
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setChangePassError(data.error || 'Failed to update password.');
+        setIsSubmittingChangePass(false);
+        return;
+      }
+
+      setChangePassSuccess('Password successfully updated in Neon Cloud! You can now use your new password.');
+      setCurrentPassInput('');
+      setNewPassInput('');
+      setConfirmPassInput('');
+    } catch (err) {
+      console.error("Change password error:", err);
+      setChangePassError('Connection to authentication server failed. Please try again.');
+    } finally {
+      setIsSubmittingChangePass(false);
     }
   };
 
@@ -1225,13 +1299,32 @@ export default function App() {
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              title="Sign Out"
-              className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {!user?.isGoogleVerified && (
+                <button
+                  onClick={() => {
+                    setShowChangePasswordModal(true);
+                    setChangePassError('');
+                    setChangePassSuccess('');
+                    setCurrentPassInput('');
+                    setNewPassInput('');
+                    setConfirmPassInput('');
+                  }}
+                  title="Change Password"
+                  className="p-2 text-slate-600 hover:text-[#ea8b21] hover:bg-[#ea8b21]/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[#ea8b21]/20 shrink-0"
+                >
+                  <Key className="w-4 h-4" />
+                </button>
+              )}
+
+              <button
+                onClick={handleLogout}
+                title="Sign Out"
+                className="p-2 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2969,6 +3062,153 @@ export default function App() {
                 Stay Logged In
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal (Strictly for non-Google email/password accounts) */}
+      {showChangePasswordModal && !user?.isGoogleVerified && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-[#ebdcc8] rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            
+            <div className="flex items-center justify-between pb-3 border-b border-[#ebdcc8]/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#ea8b21]/10 text-[#ea8b21] flex items-center justify-center">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Change Password</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Neon Cloud PostgreSQL Encrypted Update</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowChangePasswordModal(false);
+                  setChangePassError('');
+                  setChangePassSuccess('');
+                }}
+                className="p-1.5 hover:bg-[#faf5ec] rounded-xl text-slate-500 hover:text-slate-900 cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {changePassError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-medium">{changePassError}</span>
+              </div>
+            )}
+
+            {changePassSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-medium">{changePassSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-900 block mb-1">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? "text" : "password"}
+                    required
+                    placeholder="Enter current password"
+                    value={currentPassInput}
+                    onChange={(e) => {
+                      setCurrentPassInput(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-900 block mb-1">New Password (min. 6 characters)</label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? "text" : "password"}
+                    required
+                    placeholder="Enter new password"
+                    value={newPassInput}
+                    onChange={(e) => {
+                      setNewPassInput(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-900 block mb-1">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPass ? "text" : "password"}
+                    required
+                    placeholder="Re-enter new password"
+                    value={confirmPassInput}
+                    onChange={(e) => {
+                      setConfirmPassInput(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePasswordModal(false);
+                    setChangePassError('');
+                    setChangePassSuccess('');
+                  }}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingChangePass}
+                  className={`px-5 py-2.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/20 cursor-pointer flex items-center gap-1.5 ${isSubmittingChangePass ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {isSubmittingChangePass ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Updating Neon Cloud...</span>
+                    </>
+                  ) : (
+                    <span>Save New Password</span>
+                  )}
+                </button>
+              </div>
+            </form>
+
           </div>
         </div>
       )}

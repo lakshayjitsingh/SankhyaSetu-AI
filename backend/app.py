@@ -343,6 +343,27 @@ def auth_login():
     return jsonify(result), status_code
 
 
+@app.route("/api/db/auth/change-password", methods=["POST"])
+def auth_change_password():
+    """Changes password for direct email/password accounts in Neon Cloud PostgreSQL.
+    Rejects Google OAuth users."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+
+    if not email or not current_password or not new_password:
+        return jsonify({"success": False, "error": "Email, current password, and new password are required"}), 400
+
+    result = db.change_officer_password(
+        email=email, 
+        current_password=current_password, 
+        new_password=new_password
+    )
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
 @app.route("/api/db/sync-user", methods=["POST"])
 def sync_user():
     """Syncs an officer's profile to Neon PostgreSQL upon login or registration."""

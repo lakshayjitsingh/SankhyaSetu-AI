@@ -340,6 +340,77 @@ def verify_officer_login(email, password):
     return {"success": False, "error": "Login verification failed"}
 
 
+def change_officer_password(email, current_password, new_password):
+    """Securely updates an officer's password in Neon Cloud PostgreSQL.
+    Strictly blocks Google OAuth accounts and validates current password before saving new scrypt hash."""
+    if not email or not current_password or not new_password:
+        return {"success": False, "error": "Email, current password, and new password are required."}
+
+    email = email.strip().lower()
+    current_password = current_password.strip()
+    new_password = new_password.strip()
+
+    if len(new_password) < 6:
+        return {"success": False, "error": "New password must be at least 6 characters."}
+
+    if current_password == new_password:
+        return {"success": False, "error": "New password must be different from current password."}
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return {"success": False, "error": "Database unavailable."}
+
+            cur.execute("""
+                SELECT id, email, auth_provider, password
+                FROM officers
+                WHERE email = %s;
+            """, (email,))
+
+            row = cur.fetchone()
+            if not row:
+                return {"success": False, "error": "Officer account not found."}
+
+            auth_provider = row[2]
+            db_password = row[3]
+
+            # Google OAuth accounts cannot change password locally
+            if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED":
+                return {
+                    "success": False, 
+                    "error": "This account is signed in with Google OAuth. Password changes must be made via your Google Account."
+                }
+
+            # Verify current password
+            is_valid = False
+            if not db_password:
+                is_valid = False
+            elif db_password.startswith(("scrypt:", "pbkdf2:", "bcrypt:")):
+                is_valid = check_password_hash(db_password, current_password)
+            else:
+                is_valid = (db_password == current_password)
+
+            if not is_valid:
+                return {"success": False, "error": "Current password is incorrect. Please verify and try again."}
+
+            # Hash new password with salted scrypt and update in Neon
+            new_hash = generate_password_hash(new_password)
+            cur.execute("""
+                UPDATE officers 
+                SET password = %s, last_active = CURRENT_TIMESTAMP 
+                WHERE email = %s;
+            """, (new_hash, email))
+
+            logger.info(f"Password changed successfully for officer {email}")
+            return {
+                "success": True, 
+                "message": "Password updated successfully in Neon Cloud PostgreSQL."
+            }
+    except Exception as e:
+        logger.error(f"Error changing password for {email}: {e}")
+        return {"success": False, "error": str(e)}
+
+
 def save_assessment_attempt(officer_email, role_id, score_achieved, passed, radar_scores, detailed_answers=None):
     """Saves a completed assessment attempt and 5-axis FRAC radar score to Neon."""
     if not officer_email:
