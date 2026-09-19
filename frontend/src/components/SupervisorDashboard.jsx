@@ -214,6 +214,19 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
+  // Authenticated Supervisor Email Resolution
+  const getSupervisorEmail = () => {
+    if (activeSupervisor?.email) return activeSupervisor.email.trim().toLowerCase();
+    try {
+      const saved = localStorage.getItem('sankhya_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.email) return parsed.email.trim().toLowerCase();
+      }
+    } catch (e) {}
+    return '';
+  };
+
   const fetchPendingApprovals = async () => {
     setIsLoadingApprovals(true);
     try {
@@ -244,7 +257,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
         body: JSON.stringify({
           email: officerEmail,
           target_role: 'officer',
-          reviewer: activeSupervisor?.email || 'supervisor@mospi.gov.in',
+          reviewer: getSupervisorEmail() || 'supervisor@mospi.gov.in',
           action: action
         })
       });
@@ -357,7 +370,12 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
 
     setIsSubmittingChangePass(true);
 
-    const supervisorEmail = (activeSupervisor?.email || currentSquad.supervisorEmail || 'supervisor1@gmail.com').trim().toLowerCase();
+    const supervisorEmail = getSupervisorEmail();
+    if (!supervisorEmail) {
+      setChangePassError('Active supervisor session not detected. Please sign out and sign in again.');
+      setIsSubmittingChangePass(false);
+      return;
+    }
 
     try {
       const res = await fetch(`${API_BASE}/db/auth/change-password`, {
@@ -566,7 +584,10 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-bold text-slate-900 truncate">{supervisorDisplayName.split('(')[0]}</p>
-                <p className="text-xs font-semibold text-emerald-800 flex items-center gap-1">
+                {getSupervisorEmail() && (
+                  <p className="text-[10.5px] text-slate-600 font-semibold truncate leading-tight">{getSupervisorEmail()}</p>
+                )}
+                <p className="text-xs font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Supervisor Cadre
                 </p>
               </div>
@@ -1304,7 +1325,9 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">Change Supervisor Password</h3>
-                  <p className="text-xs text-slate-700 font-semibold">Encrypted Credential Update in Neon</p>
+                  <p className="text-xs text-slate-700 font-semibold">
+                    Account: <span className="text-[#ea8b21] font-bold">{getSupervisorEmail() || 'Active Session'}</span>
+                  </p>
                 </div>
               </div>
               <button

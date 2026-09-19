@@ -182,6 +182,7 @@ export default function App() {
       if (elapsed >= INACTIVITY_LIMIT_MS) {
         setShowInactivityWarning(false);
         setUser(null);
+        setCurrentPortal('officer');
         setActiveTab('home');
         setDirectEmail('');
         setDirectPassword('');
@@ -1500,7 +1501,7 @@ export default function App() {
   // =========================================================================
   // 0. SUPERVISORY COMMAND HUBS (TIER 1 & TIER 2 DASHBOARDS)
   // =========================================================================
-  if (currentPortal === 'supervisor') {
+  if (user && currentPortal === 'supervisor') {
     return (
       <SupervisorDashboard 
         onLogout={handleLogout}
@@ -1510,7 +1511,7 @@ export default function App() {
     );
   }
 
-  if (currentPortal === 'boss') {
+  if (user && currentPortal === 'boss') {
     return (
       <MainBossDashboard 
         onLogout={handleLogout}
