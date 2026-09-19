@@ -610,9 +610,8 @@ def change_officer_password(email, current_password, new_password):
         return {"success": False, "error": str(e)}
 
 
-def reset_officer_password_with_otp(email, new_password):
-    """Securely resets an officer's password in Neon Cloud PostgreSQL after verified OTP.
-    Blocks Google OAuth accounts and updates the password with salted scrypt hashing."""
+def reset_officer_password_with_otp(email, new_password, cadre=None):
+    """Securely resets a user's password in Neon Cloud PostgreSQL across officers, supervisors, or directorate cadres after verified OTP."""
     if not email or not new_password:
         return {"success": False, "error": "Email and new password are required."}
 
@@ -622,6 +621,16 @@ def reset_officer_password_with_otp(email, new_password):
     if len(new_password) < 6:
         return {"success": False, "error": "New password must be at least 6 characters."}
 
+    cadre = (cadre or "").strip().lower()
+    if cadre == "supervisor":
+        tables_to_check = ["supervisors"]
+    elif cadre == "boss":
+        tables_to_check = ["directorate_cadres"]
+    elif cadre == "officer":
+        tables_to_check = ["officers"]
+    else:
+        tables_to_check = ["officers", "supervisors", "directorate_cadres"]
+
     try:
         with get_db_cursor(commit=True) as cur:
             if cur is None:
@@ -629,7 +638,7 @@ def reset_officer_password_with_otp(email, new_password):
 
             found_table = None
             found_row = None
-            for tbl in ["officers", "supervisors", "directorate_cadres"]:
+            for tbl in tables_to_check:
                 cur.execute(f"""
                     SELECT id, email, auth_provider, password
                     FROM {tbl}
@@ -642,7 +651,7 @@ def reset_officer_password_with_otp(email, new_password):
                     break
 
             if not found_row:
-                return {"success": False, "error": "Account not found in officer, supervisor, or directorate records."}
+                return {"success": False, "error": "Account not found in the selected cadre database."}
 
             auth_provider = (found_row[2] or "").lower()
             db_password = found_row[3] or ""

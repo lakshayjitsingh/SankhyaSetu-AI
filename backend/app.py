@@ -434,17 +434,32 @@ def auth_forgot_password_send_otp():
     Validates user exists in Neon PostgreSQL and is not a Google OAuth account."""
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
+    cadre = (data.get("cadre") or "").strip().lower()
     if not email:
         return jsonify({"success": False, "error": "Please enter your registered email address."}), 400
 
-    # Verify officer exists in Neon PostgreSQL
+    # Determine target table based on cadre context
+    if cadre == "supervisor":
+        tables_to_check = ["supervisors"]
+        not_found_msg = "No supervisor account found with this email in the MoSPI Supervisory database. Valid demo account: supervisor1@gmail.com"
+    elif cadre == "boss":
+        tables_to_check = ["directorate_cadres"]
+        not_found_msg = "No Directorate General account found with this email. Valid demo account: boss@gmail.com"
+    elif cadre == "officer":
+        tables_to_check = ["officers"]
+        not_found_msg = "No field officer account found with this email. Please check your email or sign up."
+    else:
+        tables_to_check = ["officers", "supervisors", "directorate_cadres"]
+        not_found_msg = "No account found with this email. Please check your email or sign up."
+
+    # Verify user exists in Neon PostgreSQL for the specific cadre
     try:
         with db.get_db_cursor() as cur:
             if cur is None:
                 return jsonify({"success": False, "error": "Database unavailable."}), 500
 
             found_user = None
-            for tbl in ["officers", "supervisors", "directorate_cadres"]:
+            for tbl in tables_to_check:
                 cur.execute(f"SELECT id, name, auth_provider, password FROM {tbl} WHERE email = %s;", (email,))
                 row = cur.fetchone()
                 if row:
@@ -458,7 +473,7 @@ def auth_forgot_password_send_otp():
                     break
 
             if not found_user:
-                return jsonify({"success": False, "error": "No account found with this email across officer, supervisor, or directorate cadres. Please check your email or sign up."}), 404
+                return jsonify({"success": False, "error": not_found_msg}), 404
 
             auth_provider = found_user["auth_provider"]
             db_password = found_user["password"]
@@ -494,6 +509,7 @@ def auth_forgot_password_verify_reset():
     email = (data.get("email") or "").strip().lower()
     entered_otp = (data.get("otp") or "").strip()
     new_password = (data.get("new_password") or "").strip()
+    cadre = (data.get("cadre") or "").strip().lower()
 
     if not email or not entered_otp or not new_password:
         return jsonify({"success": False, "error": "Email, OTP, and new password are required."}), 400
@@ -510,7 +526,7 @@ def auth_forgot_password_verify_reset():
         return jsonify({"success": False, "error": "Incorrect OTP. Please enter the valid 6-digit verification code."}), 400
 
     # OTP is valid -> reset password in Neon PostgreSQL with salted scrypt hash
-    result = db.reset_officer_password_with_otp(email, new_password)
+    result = db.reset_officer_password_with_otp(email, new_password, cadre=cadre)
     if result.get("success"):
         ACTIVE_PASSWORD_RESET_OTPS.pop(email, None)
         return jsonify({

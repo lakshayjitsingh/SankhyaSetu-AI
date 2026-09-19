@@ -1089,7 +1089,13 @@ export default function App() {
     setForgotSuccess('');
     const trimmed = forgotEmail.trim().toLowerCase();
     if (!trimmed) {
-      setForgotError('Please enter your registered MoSPI officer email.');
+      setForgotError(
+        forgotCadre === 'supervisor'
+          ? 'Please enter your registered MoSPI supervisor email.'
+          : (forgotCadre === 'boss'
+              ? 'Please enter your registered Directorate General email.'
+              : 'Please enter your registered MoSPI officer email.')
+      );
       return;
     }
 
@@ -1110,7 +1116,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/db/auth/forgot-password/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed })
+        body: JSON.stringify({ email: trimmed, cadre: forgotCadre })
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -1161,7 +1167,8 @@ export default function App() {
         body: JSON.stringify({
           email: trimmedEmail,
           otp: trimmedOtp,
-          new_password: trimmedNew
+          new_password: trimmedNew,
+          cadre: forgotCadre
         })
       });
       const data = await res.json();
@@ -1747,7 +1754,7 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setForgotCadre('supervisor');
-                            setForgotEmail(supervisorEmail);
+                            setForgotEmail(supervisorEmail || 'supervisor1@gmail.com');
                             setForgotStep('enter_email');
                             setForgotError('');
                             setForgotSuccess('');
@@ -1900,7 +1907,7 @@ export default function App() {
                         type="button"
                         onClick={() => {
                           setForgotCadre('boss');
-                          setForgotEmail(bossEmail);
+                          setForgotEmail(bossEmail || 'boss@gmail.com');
                           setForgotStep('enter_email');
                           setForgotError('');
                           setForgotSuccess('');
@@ -1994,7 +2001,13 @@ export default function App() {
                     <div className="w-8 h-8 rounded-xl bg-[#ea8b21]/10 border border-[#ea8b21]/30 flex items-center justify-center text-[#ea8b21]">
                       <Key className="w-4 h-4" />
                     </div>
-                    <h2 className="text-lg font-black text-slate-900">Account Recovery</h2>
+                    <h2 className="text-lg font-black text-slate-900">
+                      {forgotCadre === 'supervisor'
+                        ? "Supervisor Account Recovery"
+                        : (forgotCadre === 'boss'
+                            ? "Directorate General Account Recovery"
+                            : "Field Officer Account Recovery")}
+                    </h2>
                   </div>
                   <p className="text-xs text-slate-900 font-medium">
                     {forgotStep === 'enter_email' && "Verify your registered email to receive an OTP."}
@@ -2023,16 +2036,34 @@ export default function App() {
               {forgotStep === 'enter_email' && (
                 <form onSubmit={handleSendForgotOtp} className="space-y-4">
                   <div className="p-3.5 bg-[#faf5ec] border border-[#ebdcc8] rounded-2xl text-xs text-slate-900 leading-relaxed">
-                    <span className="font-bold block mb-1">Government Identity Verification</span>
-                    Enter the email address associated with your MoSPI account (Field Officer, Supervisor, or Directorate). A 6-digit verification code will be generated to authenticate your recovery request.
+                    <span className="font-bold block mb-1">
+                      {forgotCadre === 'supervisor'
+                        ? "MoSPI Supervisory Cadre Verification"
+                        : (forgotCadre === 'boss'
+                            ? "Directorate General Executive Verification"
+                            : "Field Officer Identity Verification")}
+                    </span>
+                    {forgotCadre === 'supervisor'
+                      ? "Enter your registered supervisory email address (e.g. supervisor1@gmail.com). A 6-digit verification code will be dispatched to authenticate your supervisory access."
+                      : (forgotCadre === 'boss'
+                          ? "Enter your registered Directorate General email address (e.g. boss@gmail.com). A 6-digit verification code will be dispatched to authenticate executive access."
+                          : "Enter the email address associated with your Field Officer account. A 6-digit verification code will be generated to authenticate your recovery request."
+                        )
+                    }
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-900 block mb-1">Registered Account Email</label>
+                    <label className="text-xs font-bold text-slate-900 block mb-1">
+                      {forgotCadre === 'supervisor'
+                        ? "Registered Supervisor Email"
+                        : (forgotCadre === 'boss'
+                            ? "Registered Directorate Email"
+                            : "Registered Field Officer Email")}
+                    </label>
                     <input
                       type="email"
                       required
-                      placeholder="user@mospi.gov.in"
+                      placeholder={forgotCadre === 'supervisor' ? "supervisor1@gmail.com" : (forgotCadre === 'boss' ? "boss@gmail.com" : "officer@mospi.gov.in")}
                       value={forgotEmail}
                       onChange={(e) => {
                         setForgotEmail(e.target.value);
