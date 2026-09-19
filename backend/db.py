@@ -142,14 +142,36 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_assessment_timestamp 
                 ON assessment_attempts(attempt_timestamp DESC);
             """)
-            logger.info("Neon database tables and indexes verified successfully.")
+            # Ensure password column exists with zero downtime
+            cur.execute("""
+                ALTER TABLE officers ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+            """)
+
+            # Pre-seed standard accounts into Neon if not already present
+            seed_accounts = [
+                ("lakshayjit.singh2006@gmail.com", "Lakshayjit Singh", "field_investigator_nsso", "Field Investigator (NSSO)", "Field Operations Division", "manual", "password123"),
+                ("officer.iss@nic.in", "Senior ISS Officer", "statistical_officer_cso", "Junior Statistical Officer (CSO)", "National Accounts Division", "manual", "admin123"),
+                ("supervisor.asuse@nic.in", "ASUSE Field Supervisor", "survey_supervisor_asuse", "Survey Supervisor (ASUSE)", "Economic Census Division", "manual", "supervisor123"),
+                ("lakshayjitsingh96@gmail.com", "Lakshayjit Singh", "field_investigator_nsso", "Field Investigator (NSSO)", "Field Operations Division", "google", "GOOGLE_OAUTH_VERIFIED")
+            ]
+            for sa in seed_accounts:
+                cur.execute("""
+                    INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, last_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (email) 
+                    DO UPDATE SET 
+                        password = COALESCE(officers.password, EXCLUDED.password),
+                        name = COALESCE(officers.name, EXCLUDED.name);
+                """, sa)
+
+            logger.info("Neon database tables and seed accounts verified successfully.")
             return True
     except Exception as e:
         logger.error(f"Error during init_db: {e}")
         return False
 
 
-def upsert_officer(email, name, role_id, role_name=None, department=None, auth_provider="manual"):
+def upsert_officer(email, name, role_id, role_name=None, department=None, auth_provider="manual", password=None):
     """Inserts or updates an officer in the database using parameterized queries."""
     if not email:
         return None
@@ -163,8 +185,8 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
                 return None
 
             cur.execute("""
-                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, last_active)
-                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, last_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON CONFLICT (email) 
                 DO UPDATE SET 
                     name = EXCLUDED.name,
@@ -172,9 +194,10 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
                     role_name = COALESCE(EXCLUDED.role_name, officers.role_name),
                     department = COALESCE(EXCLUDED.department, officers.department),
                     auth_provider = COALESCE(EXCLUDED.auth_provider, officers.auth_provider),
+                    password = COALESCE(EXCLUDED.password, officers.password),
                     last_active = CURRENT_TIMESTAMP
-                RETURNING id, email, name, role_id, role_name, department, auth_provider, created_at, last_active;
-            """, (email, name, role_id, role_name, department, auth_provider))
+                RETURNING id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active;
+            """, (email, name, role_id, role_name, department, auth_provider, password))
             
             row = cur.fetchone()
             if row:
@@ -186,12 +209,112 @@ def upsert_officer(email, name, role_id, role_name=None, department=None, auth_p
                     "role_name": row[4],
                     "department": row[5],
                     "auth_provider": row[6],
-                    "created_at": row[7].isoformat() if row[7] else None,
-                    "last_active": row[8].isoformat() if row[8] else None
+                    "password": row[7],
+                    "created_at": row[8].isoformat() if row[8] else None,
+                    "last_active": row[9].isoformat() if row[9] else None
                 }
     except Exception as e:
         logger.error(f"Error upserting officer {email}: {e}")
     return None
+
+
+def register_officer(email, password, name, role_id="field_investigator_nsso", role_name=None, department=None):
+    """Registers a new officer directly in Neon Cloud PostgreSQL with duplicate prevention."""
+    if not email or not password:
+        return {"success": False, "error": "Email and password are required"}
+
+    email = email.strip().lower()
+    password = password.strip()
+    name = name.strip() if name else email.split("@")[0]
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return {"success": False, "error": "Database unavailable"}
+
+            # Check if user already exists
+            cur.execute("SELECT id FROM officers WHERE email = %s;", (email,))
+            if cur.fetchone():
+                return {"success": False, "error": "An account with this email is already registered. Please Sign In."}
+
+            cur.execute("""
+                INSERT INTO officers (email, name, role_id, role_name, department, auth_provider, password, last_active)
+                VALUES (%s, %s, %s, %s, %s, 'manual', %s, CURRENT_TIMESTAMP)
+                RETURNING id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active;
+            """, (email, name, role_id, role_name or "Field Investigator (NSSO)", department or "Field Operations Division", password))
+
+            row = cur.fetchone()
+            if row:
+                return {
+                    "success": True,
+                    "officer": {
+                        "id": row[0],
+                        "email": row[1],
+                        "name": row[2],
+                        "role_id": row[3],
+                        "role_name": row[4],
+                        "department": row[5],
+                        "auth_provider": row[6],
+                        "password": row[7],
+                        "created_at": row[8].isoformat() if row[8] else None,
+                        "last_active": row[9].isoformat() if row[9] else None
+                    }
+                }
+    except Exception as e:
+        logger.error(f"Error registering officer {email}: {e}")
+        return {"success": False, "error": str(e)}
+    return {"success": False, "error": "Registration failed"}
+
+
+def verify_officer_login(email, password):
+    """Authenticates an officer's email and password against Neon Cloud PostgreSQL."""
+    if not email or not password:
+        return {"success": False, "error": "Email and password are required"}
+
+    email = email.strip().lower()
+    password = password.strip()
+
+    try:
+        with get_db_cursor(commit=True) as cur:
+            if cur is None:
+                return {"success": False, "error": "Database unavailable"}
+
+            cur.execute("""
+                SELECT id, email, name, role_id, role_name, department, auth_provider, password, created_at, last_active
+                FROM officers
+                WHERE email = %s;
+            """, (email,))
+
+            row = cur.fetchone()
+            if not row:
+                return {"success": False, "error": "No account found with this email. Please Sign Up first."}
+
+            db_password = row[7]
+            if db_password != password:
+                return {"success": False, "error": "Incorrect password. Please try again."}
+
+            # Update last_active
+            cur.execute("UPDATE officers SET last_active = CURRENT_TIMESTAMP WHERE email = %s;", (email,))
+
+            return {
+                "success": True,
+                "officer": {
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "role_id": row[3],
+                    "role_name": row[4],
+                    "department": row[5],
+                    "auth_provider": row[6],
+                    "password": row[7],
+                    "created_at": row[8].isoformat() if row[8] else None,
+                    "last_active": row[9].isoformat() if row[9] else None
+                }
+            }
+    except Exception as e:
+        logger.error(f"Error verifying login for {email}: {e}")
+        return {"success": False, "error": str(e)}
+    return {"success": False, "error": "Login verification failed"}
 
 
 def save_assessment_attempt(officer_email, role_id, score_achieved, passed, radar_scores, detailed_answers=None):

@@ -302,6 +302,47 @@ def evaluate_quiz():
 # NEON CLOUD POSTGRESQL DATABASE PERSISTENCE ENDPOINTS
 # ==============================================================================
 
+@app.route("/api/db/auth/register", methods=["POST"])
+def auth_register():
+    """Registers a new officer directly in Neon Cloud PostgreSQL with duplicate checking."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    password = data.get("password")
+    name = data.get("name")
+    role_id = data.get("role_id", "field_investigator_nsso")
+    role_name = data.get("role_name")
+    department = data.get("department")
+
+    if not email or not password:
+        return jsonify({"success": False, "error": "Email and password are required"}), 400
+
+    result = db.register_officer(
+        email=email,
+        password=password,
+        name=name,
+        role_id=role_id,
+        role_name=role_name,
+        department=department
+    )
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/db/auth/login", methods=["POST"])
+def auth_login():
+    """Verifies officer credentials directly against Neon Cloud PostgreSQL."""
+    data = request.get_json() or {}
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"success": False, "error": "Email and password are required"}), 400
+
+    result = db.verify_officer_login(email=email, password=password)
+    status_code = 200 if result.get("success") else 401
+    return jsonify(result), status_code
+
+
 @app.route("/api/db/sync-user", methods=["POST"])
 def sync_user():
     """Syncs an officer's profile to Neon PostgreSQL upon login or registration."""
@@ -312,11 +353,12 @@ def sync_user():
     role_name = data.get("role_name")
     department = data.get("department")
     auth_provider = data.get("auth_provider", "manual")
+    password = data.get("password")
     
     if not email:
         return jsonify({"error": "Email is required"}), 400
 
-    officer = db.upsert_officer(email, name, role_id, role_name, department, auth_provider)
+    officer = db.upsert_officer(email, name, role_id, role_name, department, auth_provider, password=password)
     return jsonify({
         "success": bool(officer),
         "officer": officer,

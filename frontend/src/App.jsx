@@ -265,6 +265,7 @@ export default function App() {
   const [directEmail, setDirectEmail] = useState('');
   const [directPassword, setDirectPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Per-User Activity History & Improvement Tracking
   const [userHistory, setUserHistory] = useState([]);
@@ -505,8 +506,8 @@ export default function App() {
     }
   };
 
-  // Direct Email / Password Authentication
-  const handleDirectAuth = (e) => {
+  // Direct Email / Password Authentication via Neon Cloud PostgreSQL
+  const handleDirectAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
 
@@ -524,70 +525,95 @@ export default function App() {
       return;
     }
 
-    let registered = {};
+    setIsAuthenticating(true);
+
     try {
-      const stored = localStorage.getItem('sankhya_registered_accounts');
-      registered = stored ? JSON.parse(stored) : {
-        "lakshayjit.singh2006@gmail.com": "password123",
-        "officer.iss@nic.in": "admin123"
-      };
-    } catch {
-      registered = {};
-    }
+      if (isSignUp) {
+        // Direct Neon Cloud Registration
+        const derivedName = trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase();
+        const activeF = STATISTICAL_FIELDS.find(f => f.id === selectedField) || STATISTICAL_FIELDS[0];
 
-    if (isSignUp) {
-      if (registered[trimmedEmail]) {
-        setAuthError('An account with this email is already registered. Please switch to Sign In.');
-        return;
+        const response = await fetch(`${API_BASE}/db/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: trimmedEmail,
+            password: trimmedPass,
+            name: derivedName,
+            role_id: activeF?.role_id || 'field_investigator_nsso',
+            role_name: activeF?.designation || 'Field Investigator (NSSO)',
+            department: activeF?.title || 'Field Operations Division'
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setAuthError(data.error || 'Registration failed. Please try again.');
+          setIsAuthenticating(false);
+          return;
+        }
+
+        const officer = data.officer;
+        const userData = {
+          name: officer?.name || derivedName,
+          email: trimmedEmail,
+          avatar: '',
+          isGoogleVerified: false,
+          hasCompletedOnboarding: false, // New user -> show popup once
+          selectedField: officer?.role_id || selectedField || 'field_investigator_nsso',
+          loginTime: new Date().toLocaleTimeString()
+        };
+        setUser(userData);
+        localStorage.setItem('sankhya_user', JSON.stringify(userData));
+        localStorage.setItem('sankhya_last_activity', Date.now().toString());
+        setInactivityNotice('');
+        setDirectPassword('');
+        setDirectEmail('');
+        setShowFieldModal(true);
+      } else {
+        // Direct Neon Cloud Login
+        const response = await fetch(`${API_BASE}/db/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: trimmedEmail,
+            password: trimmedPass
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setAuthError(data.error || 'Invalid credentials. Please check your email and password.');
+          setIsAuthenticating(false);
+          return;
+        }
+
+        const officer = data.officer;
+        const matchedField = STATISTICAL_FIELDS.find(f => f.role_id === officer?.role_id) || STATISTICAL_FIELDS[0];
+        const userData = {
+          name: officer?.name || trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase(),
+          email: trimmedEmail,
+          avatar: '',
+          isGoogleVerified: officer?.auth_provider === 'google',
+          hasCompletedOnboarding: true, // Existing user -> no popup
+          selectedField: matchedField?.id || selectedField,
+          loginTime: new Date().toLocaleTimeString()
+        };
+        setUser(userData);
+        if (matchedField?.id) {
+          setSelectedField(matchedField.id);
+        }
+        localStorage.setItem('sankhya_user', JSON.stringify(userData));
+        localStorage.setItem('sankhya_last_activity', Date.now().toString());
+        setInactivityNotice('');
+        setDirectPassword('');
+        setDirectEmail('');
       }
-
-      registered[trimmedEmail] = trimmedPass;
-      localStorage.setItem('sankhya_registered_accounts', JSON.stringify(registered));
-
-      const derivedName = trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase();
-      const userData = {
-        name: derivedName,
-        email: trimmedEmail,
-        avatar: '',
-        isGoogleVerified: false,
-        hasCompletedOnboarding: false, // New user -> show popup once
-        selectedField: 'field_investigator_nsso',
-        loginTime: new Date().toLocaleTimeString()
-      };
-      setUser(userData);
-      localStorage.setItem('sankhya_user', JSON.stringify(userData));
-      localStorage.setItem('sankhya_last_activity', Date.now().toString());
-      setInactivityNotice('');
-      setDirectPassword('');
-      setDirectEmail('');
-      setShowFieldModal(true);
-    } else {
-      if (!registered[trimmedEmail]) {
-        setAuthError('No account found with this email. You must click "Sign up" below to register first.');
-        return;
-      }
-
-      if (registered[trimmedEmail] !== trimmedPass && registered[trimmedEmail] !== "GOOGLE_OAUTH_VERIFIED") {
-        setAuthError('Incorrect password. Please verify your credentials or sign up.');
-        return;
-      }
-
-      const derivedName = trimmedEmail.split('@')[0].replace('.', ' ').toUpperCase();
-      const userData = {
-        name: derivedName,
-        email: trimmedEmail,
-        avatar: '',
-        isGoogleVerified: false,
-        hasCompletedOnboarding: true, // Existing user -> no popup
-        selectedField: selectedField,
-        loginTime: new Date().toLocaleTimeString()
-      };
-      setUser(userData);
-      localStorage.setItem('sankhya_user', JSON.stringify(userData));
-      localStorage.setItem('sankhya_last_activity', Date.now().toString());
-      setInactivityNotice('');
-      setDirectPassword('');
-      setDirectEmail('');
+    } catch (err) {
+      console.error("Neon cloud authentication error:", err);
+      setAuthError('Connection to authentication server failed. Please verify your connection.');
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -974,9 +1000,16 @@ export default function App() {
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 hover:shadow-lg hover:shadow-[#ea8b21]/30 cursor-pointer mt-1"
+                  disabled={isAuthenticating}
+                  className={`w-full py-3.5 bg-[#ea8b21] hover:bg-[#d97d16] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#ea8b21]/25 hover:shadow-lg hover:shadow-[#ea8b21]/30 cursor-pointer mt-1 flex items-center justify-center gap-2 ${isAuthenticating ? 'opacity-75 cursor-not-allowed' : ''}`}
                 >
-                  {isSignUp ? "Create Account & Continue" : "Sign In to Portal"}
+                  {isAuthenticating && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  {isAuthenticating 
+                    ? (isSignUp ? "Registering in Neon Cloud..." : "Authenticating with Neon Cloud...")
+                    : (isSignUp ? "Create Account & Continue" : "Sign In to Portal")
+                  }
                 </button>
               </form>
 
@@ -1006,6 +1039,11 @@ export default function App() {
                 )}
               </div>
 
+              {/* Neon Cloud Database Status Indicator */}
+              <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Neon Cloud PostgreSQL Persistence Active</span>
+              </div>
             </div>
 
           </div>
