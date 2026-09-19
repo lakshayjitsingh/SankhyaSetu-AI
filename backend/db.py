@@ -162,8 +162,16 @@ def init_db():
                     ON CONFLICT (email) 
                     DO UPDATE SET 
                         password = COALESCE(officers.password, EXCLUDED.password),
-                        name = COALESCE(officers.name, EXCLUDED.name);
+                        name = COALESCE(officers.name, EXCLUDED.name),
+                        auth_provider = EXCLUDED.auth_provider;
                 """, sa)
+
+            # Ensure all Google OAuth accounts have auth_provider set to google
+            cur.execute("""
+                UPDATE officers 
+                SET auth_provider = 'google' 
+                WHERE password = 'GOOGLE_OAUTH_VERIFIED' OR password LIKE 'GOOGLE_%';
+            """)
 
             logger.info("Neon database tables and seed accounts verified successfully.")
             return True
@@ -464,7 +472,7 @@ def reset_officer_password_with_otp(email, new_password):
                 return {"success": False, "error": "Database unavailable."}
 
             cur.execute("""
-                SELECT id, email, auth_provider
+                SELECT id, email, auth_provider, password
                 FROM officers
                 WHERE email = %s;
             """, (email,))
@@ -473,8 +481,9 @@ def reset_officer_password_with_otp(email, new_password):
             if not row:
                 return {"success": False, "error": "Officer account not found."}
 
-            auth_provider = row[2]
-            if auth_provider == "google":
+            auth_provider = (row[2] or "").lower()
+            db_password = row[3] or ""
+            if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED" or db_password.startswith("GOOGLE_"):
                 return {
                     "success": False,
                     "error": "This account is signed in with Google OAuth. Please sign in using Google."

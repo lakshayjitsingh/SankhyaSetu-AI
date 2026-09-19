@@ -390,16 +390,17 @@ def auth_forgot_password_send_otp():
             if cur is None:
                 return jsonify({"success": False, "error": "Database unavailable."}), 500
 
-            cur.execute("SELECT id, name, auth_provider FROM officers WHERE email = %s;", (email,))
+            cur.execute("SELECT id, name, auth_provider, password FROM officers WHERE email = %s;", (email,))
             row = cur.fetchone()
             if not row:
                 return jsonify({"success": False, "error": "No MoSPI officer account found with this email. Please check your email or sign up."}), 404
 
-            auth_provider = row[2]
-            if auth_provider == "google":
+            auth_provider = (row[2] or "").lower()
+            db_password = row[3] or ""
+            if auth_provider == "google" or db_password == "GOOGLE_OAUTH_VERIFIED" or db_password.startswith("GOOGLE_"):
                 return jsonify({
                     "success": False,
-                    "error": "This account is authenticated via Google OAuth. Please click 'Sign in with Google' on the login screen."
+                    "error": "This account is authenticated via Google Sign-In. Password reset is not applicable. Please click 'Sign in with Google' on the login screen."
                 }), 400
     except Exception as e:
         return jsonify({"success": False, "error": f"Database query error: {e}"}), 500
