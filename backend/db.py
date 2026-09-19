@@ -439,7 +439,7 @@ def change_officer_password(email, current_password, new_password):
             logger.info(f"Password changed successfully for officer {email}")
             return {
                 "success": True, 
-                "message": "Password updated successfully in Neon Cloud PostgreSQL."
+                "message": "Password updated successfully."
             }
     except Exception as e:
         logger.error(f"Error changing password for {email}: {e}")

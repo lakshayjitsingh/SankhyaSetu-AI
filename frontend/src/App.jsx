@@ -683,7 +683,7 @@ export default function App() {
         return;
       }
 
-      setChangePassSuccess('Password successfully updated in Neon Cloud! You can now use your new password.');
+      setChangePassSuccess(data.message || 'Password successfully updated! You can now use your new password.');
       setCurrentPassInput('');
       setNewPassInput('');
       setConfirmPassInput('');
@@ -1103,7 +1103,7 @@ export default function App() {
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   )}
                   {isAuthenticating 
-                    ? (isSignUp ? "Registering in Neon Cloud..." : "Authenticating with Neon Cloud...")
+                    ? (isSignUp ? "Creating Account..." : "Signing In...")
                     : (isSignUp ? "Create Account & Continue" : "Sign In to Portal")
                   }
                 </button>
@@ -1135,10 +1135,10 @@ export default function App() {
                 )}
               </div>
 
-              {/* Neon Cloud Database Status Indicator */}
+              {/* Secure Cloud Database Status Indicator */}
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Neon Cloud PostgreSQL Persistence Active</span>
+                <span>MoSPI Secure Cloud Database Connected</span>
               </div>
             </div>
 
@@ -3075,7 +3075,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">Change Password</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Neon Cloud PostgreSQL Encrypted Update</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Encrypted Password Update</p>
                 </div>
               </div>
               <button
@@ -3197,7 +3197,7 @@ export default function App() {
                   {isSubmittingChangePass ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Updating Neon Cloud...</span>
+                      <span>Updating Password...</span>
                     </>
                   ) : (
                     <span>Save New Password</span>
