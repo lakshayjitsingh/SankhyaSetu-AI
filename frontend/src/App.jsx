@@ -2512,7 +2512,7 @@ export default function App() {
                             />
                             <Bar 
                               dataKey="score" 
-                              name="Your Score achieved (%)" 
+                              name="Your Assessment Score per Attempt" 
                               fill="#ea8b21" 
                               radius={[6, 6, 0, 0]} 
                               maxBarSize={48}
@@ -2525,7 +2525,7 @@ export default function App() {
                       <div className="pt-3 border-t border-[#ebdcc8]/80 flex flex-wrap items-center justify-center gap-6 text-xs">
                         <div className="flex items-center gap-2">
                           <span className="w-3.5 h-3.5 rounded-md bg-[#ea8b21] shadow-2xs" />
-                          <span className="font-bold text-slate-900">Your Score achieved (%)</span>
+                          <span className="font-bold text-slate-900">Your Assessment Score per Attempt</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="w-5 h-0 border-t-2 border-dashed border-blue-600" />
