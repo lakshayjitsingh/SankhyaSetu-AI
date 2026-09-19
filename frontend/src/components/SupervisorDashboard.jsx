@@ -557,20 +557,6 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
               <Compass className={`w-5 h-5 shrink-0 ${activeTab === 'competency' ? 'text-white' : 'text-slate-800'}`} />
               <span className="tracking-tight truncate whitespace-nowrap">Diagnostic Analytics</span>
             </button>
-
-            {/* 5. Scrutiny Directives & Logs */}
-            <button
-              onClick={() => { setActiveTab('compliance'); setMobileSidebarOpen(false); }}
-              className={`w-full h-11 px-3.5 rounded-2xl text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
-                activeTab === 'compliance'
-                  ? 'bg-[#ea8b21] text-white shadow-md shadow-[#ea8b21]/30'
-                  : 'text-slate-900 hover:text-slate-950 hover:bg-[#eee3d3]/80'
-              }`}
-            >
-              <FileCheck2 className={`w-5 h-5 shrink-0 ${activeTab === 'compliance' ? 'text-white' : 'text-slate-800'}`} />
-              <span className="tracking-tight truncate whitespace-nowrap">Scrutiny Directives</span>
-            </button>
-
           </nav>
 
         </div>
@@ -657,7 +643,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
                 {activeTab === 'overview' ? 'Squad Hub' : (
                   activeTab === 'approvals' ? 'Cadre Approvals' : (
                     activeTab === 'squad' ? 'Squad Scrutiny' : (
-                      activeTab === 'competency' ? 'Diagnostic Analytics' : 'Scrutiny Directives'
+                      activeTab === 'competency' ? 'Diagnostic Analytics' : 'Squad Hub'
                     )
                   )
                 )}
@@ -1228,80 +1214,6 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
                     </div>
                     <span className="text-xs font-bold text-[#ea8b21] bg-white px-2.5 py-1 rounded-lg border border-[#ebdcc8]">
                       iGOT-ASUSE-04
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 bg-[#faf5ec] border border-[#ebdcc8] rounded-xl flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-xs text-slate-950">NSSO Sampling & Non-Response Protocols (PLFS 2026)</div>
-                      <div className="text-xs text-slate-800 font-semibold">Standard procedures for household substitution, lockouts, and reluctant informants.</div>
-                    </div>
-                    <span className="text-xs font-bold text-[#ea8b21] bg-white px-2.5 py-1 rounded-lg border border-[#ebdcc8]">
-                      iGOT-PLFS-02
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ===================================================================
-              TAB 5: SCRUTINY DIRECTIVES & COMPLIANCE AUDIT
-              =================================================================== */}
-          {activeTab === 'compliance' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              
-              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 sm:p-6 shadow-2xs space-y-2">
-                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <FileCheck2 className="w-5 h-5 text-[#ea8b21]" />
-                  <span>MoSPI Statutory Scrutiny & Operational Directives</span>
-                </h3>
-                <p className="text-xs text-slate-800 font-semibold">
-                  Collection of Statistics Act statutory duties for Senior Statistical Officers and Field Cadre Supervisors.
-                </p>
-              </div>
-
-              {/* Statutory Checklist Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-black text-slate-950">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                    <span>Mandatory 10% Scrutiny Audit</span>
-                  </div>
-                  <p className="text-xs text-slate-800 font-semibold leading-relaxed">
-                    Supervisors are statutorily required to spot-verify at least 10% of total schedules completed by each Field Investigator before final submission to NSSO Data Processing Division (DPD).
-                  </p>
-                  <div className="text-xs font-mono font-bold text-slate-800 bg-[#faf5ec] p-2.5 rounded-xl border border-[#ebdcc8]">
-                    Status: Verified for Current Survey Cycle
-                  </div>
-                </div>
-
-                <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-black text-slate-950">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                    <span>Data Confidentiality & Legal Immunity</span>
-                  </div>
-                  <p className="text-xs text-slate-800 font-semibold leading-relaxed">
-                    Under Section 9 of the Collection of Statistics Act, individual informant records are strictly confidential and inadmissible as evidence in court or taxation proceedings.
-                  </p>
-                  <div className="text-xs font-mono font-bold text-slate-800 bg-[#faf5ec] p-2.5 rounded-xl border border-[#ebdcc8]">
-                    Protocol: MoSPI Encryption Key Enforced
-                  </div>
-                </div>
-              </div>
-
-              {/* Roll-Call Audit Log */}
-              <div className="bg-white rounded-2xl border border-[#ebdcc8] p-5 shadow-2xs space-y-3">
-                <h4 className="text-sm font-black text-slate-900">Daily Supervisory Roll-Call Audit Trail</h4>
-                <div className="space-y-2 text-xs font-mono">
-                  <div className="p-3 bg-[#faf5ec] rounded-xl border border-[#ebdcc8] flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-slate-950">{currentSquad.squadName}</span>
-                      <span className="text-slate-700 font-bold ml-2">({currentSquad.supervisorBadge})</span>
-                    </div>
-                    <span className="font-bold text-emerald-800">
-                      {currentSquad.submittedAt || 'Pending Today'}
                     </span>
                   </div>
                 </div>
