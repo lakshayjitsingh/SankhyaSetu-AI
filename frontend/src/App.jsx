@@ -2329,14 +2329,6 @@ export default function App() {
                   { name: 'Target Benchmark', score: 0, target: 80, fullName: 'Take an assessment to record scores' }
                 ];
 
-            const clearHistory = () => {
-              if (window.confirm("Are you sure you want to reset your local activity history?")) {
-                const historyKey = `sankhya_history_${user.email.toLowerCase()}`;
-                localStorage.removeItem(historyKey);
-                setUserHistory([]);
-              }
-            };
-
             return (
               <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
                 {/* Header with Title and Quick Actions */}
@@ -2555,15 +2547,6 @@ export default function App() {
                         All completed diagnostic sessions and manual assessments saved to your officer profile
                       </p>
                     </div>
-                    {completedCount > 0 && (
-                      <button
-                        onClick={clearHistory}
-                        className="text-[11px] font-bold text-slate-700 hover:text-rose-600 transition-all cursor-pointer"
-                        title="Clear history"
-                      >
-                        Reset History
-                      </button>
-                    )}
                   </div>
 
                   {completedCount === 0 ? (
