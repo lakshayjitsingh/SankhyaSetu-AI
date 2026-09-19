@@ -399,6 +399,7 @@ export default function App() {
     // Asynchronous background write to Neon Cloud DB
     try {
       const activeF = STATISTICAL_FIELDS.find(f => f.id === selectedField) || STATISTICAL_FIELDS[0];
+      const scoresPayload = activity.radar_scores || (diagnosticResult?.competency_scores) || {};
       fetch(`${API_BASE}/db/save-attempt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -407,10 +408,15 @@ export default function App() {
           role_id: activeF?.role_id || selectedField || 'field_investigator_nsso',
           score_achieved: activity.score || 0,
           passed: (activity.score || 0) >= 70,
-          radar_scores: currentScores || {},
+          radar_scores: scoresPayload,
           detailed_answers: activity.detailed_results || []
         })
-      }).catch(err => console.warn("Neon attempt sync offline fallback:", err));
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Neon attempt recorded:", data);
+      })
+      .catch(err => console.warn("Neon attempt sync offline fallback:", err));
     } catch (e) {
       console.warn("Neon attempt sync deferred:", e);
     }
@@ -712,6 +718,8 @@ export default function App() {
           shortTitle: `${activeF.designation.split('-')[0].trim()} Diag`,
           field: `${activeF.title} (10 Questions)`,
           score: data.overall_readiness,
+          radar_scores: data.competency_scores || [],
+          detailed_results: data.gaps_identified || [],
           status: data.gaps_identified.length === 0 ? 'All Proficient (10/10)' : `${data.gaps_identified.length} Gaps Detected`,
           date: new Date().toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
           improvementDelta: `+${Math.max(0, data.overall_readiness - 50)}%`
@@ -846,6 +854,8 @@ export default function App() {
           shortTitle: manualName.length > 12 ? manualName.slice(0, 10) + '…' : manualName,
           field: `${difficulty.toUpperCase()} (${maxScore} Questions)`,
           score: scorePercent,
+          radar_scores: {},
+          detailed_results: data.evaluations || [],
           status: scorePercent >= 70 ? `Passed (${totalScore}/${maxScore})` : `Review Needed (${totalScore}/${maxScore})`,
           date: new Date().toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
           improvementDelta: `+${Math.min(30, scorePercent)}%`
