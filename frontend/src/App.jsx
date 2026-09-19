@@ -1018,37 +1018,6 @@ export default function App() {
 
     setIsBossAuthenticating(true);
 
-    // Immediate zero-latency path for official demo Directorate credentials
-    if (trimmedEmail === 'boss@gmail.com' && trimmedPass === '123456') {
-      setCurrentPortal('boss');
-      const bossData = {
-        name: 'Dr. S. K. Mukherjee',
-        email: 'boss@gmail.com',
-        role: 'boss',
-        portal: 'boss',
-        badge: 'DDG-HQ-001',
-        department: 'MoSPI Central Directorate, New Delhi',
-        loginTime: new Date().toLocaleTimeString()
-      };
-      setUser(bossData);
-      localStorage.setItem('sankhya_user', JSON.stringify(bossData));
-      localStorage.setItem('sankhya_last_activity', Date.now().toString());
-      setInactivityNotice('');
-      setBossPassword('');
-      setBossEmail('');
-      setIsBossAuthenticating(false);
-
-      // Async verification in background
-      try {
-        fetch(`${API_BASE}/db/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: trimmedEmail, password: trimmedPass })
-        }).catch(() => {});
-      } catch (e) {}
-      return;
-    }
-
     try {
       const response = await fetch(`${API_BASE}/db/auth/login`, {
         method: 'POST',
@@ -1083,26 +1052,7 @@ export default function App() {
       setIsBossAuthenticating(false);
     } catch (err) {
       console.error("Boss auth error:", err);
-      if (trimmedEmail === 'boss@gmail.com' && trimmedPass === '123456') {
-        setCurrentPortal('boss');
-        const bossData = {
-          name: 'Dr. S. K. Mukherjee',
-          email: 'boss@gmail.com',
-          role: 'boss',
-          portal: 'boss',
-          badge: 'DDG-HQ-001',
-          department: 'MoSPI Central Directorate, New Delhi',
-          loginTime: new Date().toLocaleTimeString()
-        };
-        setUser(bossData);
-        localStorage.setItem('sankhya_user', JSON.stringify(bossData));
-        localStorage.setItem('sankhya_last_activity', Date.now().toString());
-        setInactivityNotice('');
-        setBossPassword('');
-        setBossEmail('');
-      } else {
-        setBossAuthError('Network error connecting to authentication server.');
-      }
+      setBossAuthError('Network error connecting to authentication server.');
       setIsBossAuthenticating(false);
     }
   };
@@ -2038,28 +1988,6 @@ export default function App() {
                     {isBossAuthenticating ? "Accessing Directorate HQ..." : "Sign In to Directorate HQ"}
                   </button>
                 </form>
-
-                {/* Divider */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <div className="w-full border-t border-[#ebdcc8]"></div>
-                  <span className="absolute bg-white px-2.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    demo key
-                  </span>
-                </div>
-
-                {/* 1-Click Demo Key Helper */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBossEmail('boss@gmail.com');
-                    setBossPassword('123456');
-                    if (bossAuthError) setBossAuthError('');
-                  }}
-                  className="w-full py-2 px-3 bg-[#faf5ec] hover:bg-[#f3eadc] border border-[#ebdcc8] rounded-xl text-[10.5px] font-bold text-[#ea8b21] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Key className="w-3.5 h-3.5 shrink-0" />
-                  <span>Auto-Fill Demo Key (boss@gmail.com / 123456)</span>
-                </button>
               </div>
 
               <div className="pt-3 border-t border-[#ebdcc8]/70 flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium">
