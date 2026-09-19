@@ -451,6 +451,20 @@ def cadre_check_status():
     return jsonify(result), status_code
 
 
+@app.route("/api/db/supervisors", methods=["GET"])
+def get_db_supervisors():
+    """Returns all registered supervisors from Neon PostgreSQL for the Boss/Directorate dashboard."""
+    try:
+        supervisors = db.get_all_supervisors()
+        return jsonify({
+            "success": True,
+            "supervisors": supervisors
+        }), 200
+    except Exception as e:
+        logger.error(f"Error fetching supervisors: {e}")
+        return jsonify({"success": False, "error": str(e), "supervisors": []}), 500
+
+
 @app.route("/api/db/auth/change-password", methods=["POST"])
 def auth_change_password():
     """Changes password for direct email/password accounts in Neon Cloud PostgreSQL.

@@ -121,9 +121,119 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
     }
   };
 
+  const fetchSupervisors = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/db/supervisors`);
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.supervisors)) {
+        // Base prototype squads
+        const baseSquads = INITIAL_SUPERVISORS.map(s => ({ ...s }));
+
+        const prototypeEmails = new Set([
+          'supervisor1@gmail.com', 'rajesh.supervisor@mospi.gov.in',
+          'supervisor2@gmail.com', 'sunita.supervisor@mospi.gov.in',
+          'supervisor3@gmail.com', 'anil.supervisor@mospi.gov.in'
+        ]);
+
+        const fieldNameMap = {
+          survey_supervisor_asuse: 'ASUSE (Enterprise Statistics)',
+          field_investigator_nsso: 'PLFS (Labour Force Survey)',
+          junior_statistical_officer_cso: 'HCES / Economic Statistics (CSO)',
+          statistical_officer_cso: 'HCES / Economic Statistics (CSO)'
+        };
+
+        const additionalSquads = [];
+        const activeDbSupervisors = data.supervisors.filter(s => s.status === 'active');
+
+        activeDbSupervisors.forEach(dbSup => {
+          const emailLower = (dbSup.email || '').toLowerCase().trim();
+          if (!prototypeEmails.has(emailLower)) {
+            if (!additionalSquads.some(s => s.supervisorEmail.toLowerCase() === emailLower)) {
+              const squadId = `squad_${dbSup.field_id || 'unit'}_${dbSup.id}`;
+              const fieldName = fieldNameMap[dbSup.field_id] || 'ASUSE (Enterprise Statistics)';
+              
+              const defaultOfficers = [
+                {
+                  id: `FI-${dbSup.id}-01`,
+                  name: 'Pawan Kumar',
+                  cadre: 'Field Investigator',
+                  score: 84,
+                  status: 'active',
+                  email: `pawan.${dbSup.id}@mospi.gov.in`
+                },
+                {
+                  id: `JSO-${dbSup.id}-02`,
+                  name: 'Meera Sen',
+                  cadre: 'Junior Statistical Officer',
+                  score: 79,
+                  status: 'active',
+                  email: `meera.${dbSup.id}@mospi.gov.in`
+                },
+                {
+                  id: `FI-${dbSup.id}-03`,
+                  name: 'Kunal Shah',
+                  cadre: 'Field Investigator',
+                  score: 75,
+                  status: 'active',
+                  email: `kunal.${dbSup.id}@mospi.gov.in`
+                }
+              ];
+
+              const squadName = (dbSup.department && dbSup.department !== 'Field Operations Division')
+                ? dbSup.department
+                : `${dbSup.name}'s Field Cadre Unit #${String(dbSup.id).padStart(2, '0')}`;
+
+              additionalSquads.push({
+                squadId: squadId,
+                squadName: squadName,
+                fieldId: dbSup.field_id || 'survey_supervisor_asuse',
+                fieldName: fieldName,
+                supervisorName: dbSup.name,
+                supervisorCadre: dbSup.cadre_title || 'Senior Statistical Officer (SSO)',
+                supervisorEmail: dbSup.email,
+                supervisorBadge: dbSup.badge || `SSO-CADRE-${dbSup.id}`,
+                submissionStatus: 'submitted',
+                submittedAt: 'Today, 4:15 PM',
+                officerCount: defaultOfficers.length,
+                activeCount: defaultOfficers.filter(o => o.status === 'active').length,
+                deactivatedCount: 0,
+                avgScore: Math.round(defaultOfficers.reduce((acc, o) => acc + o.score, 0) / defaultOfficers.length),
+                officers: defaultOfficers
+              });
+            }
+          }
+        });
+
+        const combined = [...baseSquads, ...additionalSquads];
+
+        // Maintain local state modifications (such as purged officers)
+        setSupervisors(prev => {
+          return combined.map(squad => {
+            const prevSquad = prev.find(p => p.squadId === squad.squadId);
+            if (!prevSquad) return squad;
+            return {
+              ...squad,
+              officerCount: prevSquad.officerCount,
+              activeCount: prevSquad.activeCount,
+              deactivatedCount: prevSquad.deactivatedCount,
+              avgScore: prevSquad.avgScore,
+              officers: prevSquad.officers
+            };
+          });
+        });
+      }
+    } catch (e) {
+      console.error("Error fetching live supervisors:", e);
+    }
+  };
+
   useEffect(() => {
     fetchPendingApprovals();
-    const interval = setInterval(fetchPendingApprovals, 12000);
+    fetchSupervisors();
+    const interval = setInterval(() => {
+      fetchPendingApprovals();
+      fetchSupervisors();
+    }, 12000);
     return () => clearInterval(interval);
   }, []);
 
@@ -147,6 +257,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
           : `Registration request for ${cadreEmail} declined.`
         );
         fetchPendingApprovals();
+        fetchSupervisors();
       } else {
         triggerToast(data.error || 'Failed to update authorization status.');
       }
@@ -713,7 +824,7 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 </div>
 
                 <button
-                  onClick={fetchPendingApprovals}
+                  onClick={() => { fetchPendingApprovals(); fetchSupervisors(); }}
                   disabled={isLoadingApprovals}
                   className="self-start sm:self-auto text-xs font-bold px-3.5 py-2 bg-[#faf5ec] hover:bg-[#ebdcc8]/50 text-slate-900 border border-[#ebdcc8] rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                 >
@@ -800,8 +911,18 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                     Track daily roll-call compliance, inspect squads, and exercise master purge rights.
                   </p>
                 </div>
-                <div className="text-xs font-bold text-amber-950 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-300 self-start sm:self-auto">
-                  MoSPI Directorate Executive Authority
+                <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                  <button
+                    onClick={fetchSupervisors}
+                    className="text-xs font-bold px-3 py-1.5 bg-[#faf5ec] hover:bg-[#ebdcc8]/50 text-slate-900 border border-[#ebdcc8] rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Refresh Live Regional Squads"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-[#ea8b21]" />
+                    <span>Refresh Squads</span>
+                  </button>
+                  <div className="text-xs font-bold text-amber-950 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-300">
+                    MoSPI Directorate Executive Authority
+                  </div>
                 </div>
               </div>
 

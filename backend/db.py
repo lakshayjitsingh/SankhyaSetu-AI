@@ -1268,3 +1268,37 @@ def check_account_status(email):
         return {"success": False, "error": str(e)}
 
 
+def get_all_supervisors():
+    """Retrieves all registered supervisors from Neon PostgreSQL with cadre and status information."""
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return []
+            cur.execute("""
+                SELECT id, email, name, role, cadre_title, department, field_id, badge, auth_provider, status, created_at, last_active
+                FROM supervisors
+                ORDER BY id ASC;
+            """)
+            rows = cur.fetchall()
+            supervisors = []
+            for row in rows:
+                supervisors.append({
+                    "id": row[0],
+                    "email": row[1],
+                    "name": row[2],
+                    "role": row[3],
+                    "cadre_title": row[4],
+                    "department": row[5],
+                    "field_id": row[6],
+                    "badge": row[7],
+                    "auth_provider": row[8],
+                    "status": row[9],
+                    "created_at": row[10].isoformat() if row[10] else None,
+                    "last_active": row[11].isoformat() if row[11] else None
+                })
+            return supervisors
+    except Exception as e:
+        logger.error(f"Error fetching all supervisors: {e}")
+        return []
+
+
