@@ -94,6 +94,10 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
   const [isLoadingApprovals, setIsLoadingApprovals] = useState(false);
   const [approvalActionLoading, setApprovalActionLoading] = useState({});
 
+  // Live Officers Data from DB (for real squad stats)
+  const [liveOfficersAll, setLiveOfficersAll] = useState([]);
+  const [dbStats, setDbStats] = useState(null);
+
   // Change Password Modal States
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [currentPassInput, setCurrentPassInput] = useState('');
@@ -227,13 +231,41 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
     }
   };
 
+  const fetchAllOfficers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/db/officers`);
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.officers)) {
+        setLiveOfficersAll(data.officers);
+      }
+    } catch (e) {
+      console.error('Error fetching all officers:', e);
+    }
+  };
+
+  const fetchDbStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/db/stats`);
+      const data = await res.json();
+      if (res.ok && data.success && data.stats) {
+        setDbStats(data.stats);
+      }
+    } catch (e) {
+      console.error('Error fetching db stats:', e);
+    }
+  };
+
   useEffect(() => {
     fetchPendingApprovals();
     fetchSupervisors();
+    fetchAllOfficers();
+    fetchDbStats();
     const interval = setInterval(() => {
       fetchPendingApprovals();
       fetchSupervisors();
-    }, 12000);
+      fetchAllOfficers();
+      fetchDbStats();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -727,10 +759,10 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                     <Users className="w-4 h-4 text-[#ea8b21]" />
                   </div>
                   <div className="text-2xl font-black text-slate-900">
-                    {totalActive} <span className="text-sm font-bold text-slate-800">/ {totalOfficers} Officers</span>
+                    {liveOfficersAll.length > 0 ? liveOfficersAll.length : totalActive} <span className="text-sm font-bold text-slate-800">/ {dbStats ? dbStats.total_officers : totalOfficers} Officers</span>
                   </div>
                   <div className="text-xs text-slate-800 font-bold mt-2">
-                    Across 3 Regional Cadre Units
+                    {liveOfficersAll.length > 0 ? 'Live count from Neon DB' : 'Across 3 Regional Cadre Units'}
                   </div>
                 </div>
 
@@ -740,10 +772,10 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                     <TrendingUp className="w-4 h-4 text-emerald-700" />
                   </div>
                   <div className="text-2xl font-black text-slate-900">
-                    {nationalAvg}% <span className="text-sm font-bold text-slate-800">Average</span>
+                    {dbStats ? `${dbStats.national_avg_score}%` : `${nationalAvg}%`} <span className="text-sm font-bold text-slate-800">Average</span>
                   </div>
                   <div className="text-xs text-slate-800 font-bold mt-2">
-                    Ministry Benchmark: 70.0%
+                    {dbStats ? `Live DB — ${dbStats.total_attempts} attempts recorded` : 'Ministry Benchmark: 70.0%'}
                   </div>
                 </div>
 
@@ -1053,29 +1085,40 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {supervisors.map(sup => (
+                {supervisors.map(sup => {
+                  // Compute real stats from liveOfficersAll for this field_id
+                  const fieldOfficers = liveOfficersAll.filter(o => o.role_id === sup.fieldId);
+                  const realCount = fieldOfficers.length > 0 ? fieldOfficers.length : sup.officerCount;
+                  const realActive = fieldOfficers.length > 0 ? fieldOfficers.filter(o => o.db_status === 'active').length : sup.activeCount;
+                  const realAvg = fieldOfficers.length > 0
+                    ? Math.round(fieldOfficers.reduce((acc, o) => acc + (o.score || 0), 0) / fieldOfficers.length)
+                    : sup.avgScore;
+                  const isLive = fieldOfficers.length > 0;
+                  return (
                   <div key={sup.squadId} className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-[#ea8b21]">{sup.fieldName.split('(')[0]}</span>
-                      <span className="text-xs font-mono font-bold bg-slate-200 text-slate-900 px-2 py-0.5 rounded">{sup.squadId}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isLive ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {isLive ? '🟢 LIVE' : 'PROTOTYPE'}
+                      </span>
                     </div>
                     <h4 className="text-base font-black text-slate-900">{sup.squadName}</h4>
                     
                     <div className="space-y-2 pt-1 text-xs">
                       <div className="flex justify-between">
                         <span className="text-slate-800 font-semibold">Competency Index:</span>
-                        <span className="font-mono font-black text-slate-950">{sup.avgScore}%</span>
+                        <span className="font-mono font-black text-slate-950">{realAvg}%</span>
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                         <div 
-                          className={`h-2 rounded-full ${sup.avgScore >= 70 ? 'bg-emerald-600' : 'bg-amber-600'}`}
-                          style={{ width: `${sup.avgScore}%` }}
+                          className={`h-2 rounded-full ${realAvg >= 70 ? 'bg-emerald-600' : 'bg-amber-600'}`}
+                          style={{ width: `${realAvg}%` }}
                         ></div>
                       </div>
 
                       <div className="flex justify-between pt-1">
                         <span className="text-slate-800 font-semibold">Active Deployment:</span>
-                        <span className="font-bold text-slate-950">{sup.activeCount} of {sup.officerCount} Officers</span>
+                        <span className="font-bold text-slate-950">{realActive} of {realCount} Officers</span>
                       </div>
 
                       <div className="flex justify-between">
@@ -1086,7 +1129,8 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Ministry Standard Summary */}
@@ -1132,7 +1176,10 @@ export default function MainBossDashboard({ onLogout, activeBoss }) {
                 </h4>
 
                 <div className="divide-y divide-[#ebdcc8] border border-[#ebdcc8] rounded-xl overflow-hidden bg-[#faf5ec]/30 text-xs">
-                  {supervisors.flatMap(s => s.officers.map(o => ({ ...o, squadId: s.squadId, squadName: s.squadName }))).map((officer) => (
+                  {(liveOfficersAll.length > 0
+                    ? liveOfficersAll.map(o => ({ id: `DB-${o.id}`, name: o.name, cadre: o.role_name, score: o.score, status: o.db_status, email: o.email, squadId: 'live-db', squadName: o.department || 'Field Operations Division' }))
+                    : supervisors.flatMap(s => s.officers.map(o => ({ ...o, squadId: s.squadId, squadName: s.squadName })))
+                  ).map((officer) => (
                     <div key={officer.id} className="p-3.5 flex items-center justify-between hover:bg-white transition">
                       <div>
                         <div className="font-bold text-slate-950 flex items-center gap-2">

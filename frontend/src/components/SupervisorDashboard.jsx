@@ -396,7 +396,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
     }
   };
 
-  // Submit Squad Status to HQ
+  // Submit Squad Status to HQ — persisted in localStorage
   const handleSubmitSquadStatus = () => {
     setIsSubmitting(true);
     const now = new Date();
@@ -411,10 +411,35 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
           submittedAt: timeStr
         }
       }));
+      // Persist submission status in localStorage keyed by supervisor email + fieldId
+      try {
+        const key = `squad_submit_${getSupervisorEmail()}_${selectedFieldId}`;
+        localStorage.setItem(key, JSON.stringify({ status: 'submitted', submittedAt: timeStr }));
+      } catch(e) {}
       setIsSubmitting(false);
       triggerToast(`✅ Squad roll-call and readiness status successfully submitted to Ministry HQ at ${timeStr}`);
     }, 400);
   };
+
+  // Restore submission status from localStorage on mount
+  React.useEffect(() => {
+    const supervisorEmail = getSupervisorEmail();
+    if (!supervisorEmail) return;
+    const fieldIds = ['survey_supervisor_asuse', 'field_investigator_nsso', 'junior_statistical_officer_cso'];
+    fieldIds.forEach(fid => {
+      try {
+        const key = `squad_submit_${supervisorEmail}_${fid}`;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          const { status, submittedAt } = JSON.parse(saved);
+          setSquads(prev => ({
+            ...prev,
+            [fid]: { ...prev[fid], status, submittedAt }
+          }));
+        }
+      } catch(e) {}
+    });
+  }, []);
 
   // Change Password Handler
   const handleChangePassword = async (e) => {
@@ -668,7 +693,7 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
 
           <div className="px-2.5 py-1 bg-[#faf5ec] border border-[#ebdcc8] rounded-xl flex items-center justify-between text-xs">
             <span className="text-slate-800 font-bold">Badge ID:</span>
-            <span className="font-mono font-bold text-[#ea8b21]">{currentSquad.supervisorBadge}</span>
+            <span className="font-mono font-bold text-[#ea8b21]">{activeSupervisor?.badge || currentSquad.supervisorBadge}</span>
           </div>
 
           {/* Change Password Option (works same as field officer) */}
@@ -1248,39 +1273,63 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
                 </p>
               </div>
 
-              {/* Weak Topic Breakdown */}
+              {/* Weak Topic Breakdown — dynamic from live officers */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Card 1: Officers needing review */}
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-2">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Primary Competency Flag</span>
-                  <h4 className="text-base font-black text-slate-900">Enterprise Accounting & Turnover</h4>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Officers Needing Review</span>
+                  <h4 className="text-base font-black text-slate-900">
+                    {liveOfficers.length > 0
+                      ? `${liveOfficers.filter(o => o.score > 0 && o.score < 70).length} of ${liveOfficers.length} Officers`
+                      : `${currentSquad.officers.filter(o => o.score > 0 && o.score < 70).length} of ${currentSquad.officers.length} Officers`
+                    }
+                  </h4>
                   <p className="text-xs text-slate-800 font-semibold leading-relaxed">
-                    Flagged in 33% of field schedules. Officers demonstrate inconsistency in deducting intermediate consumption from gross output.
+                    {liveOfficers.length > 0
+                      ? (liveOfficers.filter(o => o.score > 0 && o.score < 70).length > 0
+                          ? `Officers with scores below 70%: ${liveOfficers.filter(o => o.score > 0 && o.score < 70).map(o => o.name).join(', ')}.`
+                          : 'All officers with scores are meeting or exceeding the 70% benchmark.')
+                      : 'Score data is from live assessment attempts in the DB.'
+                    }
                   </p>
                   <div className="pt-2">
                     <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
-                      Coaching Prescribed
+                      {(liveOfficers.length > 0 ? liveOfficers : currentSquad.officers).filter(o => o.score > 0 && o.score < 70).length > 0 ? 'Coaching Prescribed' : 'No Coaching Required'}
                     </span>
                   </div>
                 </div>
 
+                {/* Card 2: Inactive officers */}
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-2">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Secondary Competency Flag</span>
-                  <h4 className="text-base font-black text-slate-900">Urban Frame Survey (UFS) Maps</h4>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Inactive / Unreported</span>
+                  <h4 className="text-base font-black text-slate-900">
+                    {liveOfficers.length > 0
+                      ? `${liveOfficers.filter(o => o.status === 'inactive').length} Officers Inactive`
+                      : `${currentSquad.officers.filter(o => o.status === 'inactive').length} Officers Inactive`
+                    }
+                  </h4>
                   <p className="text-xs text-slate-800 font-semibold leading-relaxed">
-                    Flagged in rural/urban periphery wards. Difficulty matching satellite enumeration maps to on-ground hamlet structures.
+                    {liveOfficers.length > 0
+                      ? (liveOfficers.filter(o => o.status === 'inactive').length > 0
+                          ? `Inactive: ${liveOfficers.filter(o => o.status === 'inactive').map(o => `${o.name} (${o.lastActive})`).join(', ')}.`
+                          : 'All officers have been active within the last 5 days.')
+                      : 'No login activity detected for 5+ consecutive days.'
+                    }
                   </p>
                   <div className="pt-2">
                     <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
-                      Field Re-demonstration Needed
+                      {(liveOfficers.length > 0 ? liveOfficers : currentSquad.officers).filter(o => o.status === 'inactive').length > 0 ? 'Field Re-demonstration Needed' : 'All Officers Active'}
                     </span>
                   </div>
                 </div>
 
+                {/* Card 3: Compliance benchmark */}
                 <div className="bg-white border border-[#ebdcc8] p-5 rounded-2xl shadow-2xs space-y-2">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Compliance Benchmark</span>
                   <h4 className="text-base font-black text-slate-900">Passing Threshold: 70.0%</h4>
                   <p className="text-xs text-slate-800 font-semibold leading-relaxed">
-                    Current Squad Competency Index stands at <strong className="text-slate-950 font-black">{avgScore}%</strong>. Field deployment permitted for officers meeting or exceeding 70%.
+                    Current Squad Competency Index stands at <strong className="text-slate-950 font-black">{avgScore}%</strong>.
+                    {liveOfficers.length > 0 ? ' Live data from Neon DB.' : ' Prototype data.'} Field deployment permitted for officers meeting or exceeding 70%.
                   </p>
                   <div className="pt-2">
                     <span className="text-xs font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-300">
