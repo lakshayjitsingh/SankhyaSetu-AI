@@ -214,6 +214,11 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
+  // Live Officers from DB State
+  const [liveOfficers, setLiveOfficers] = useState([]);
+  const [isLoadingOfficers, setIsLoadingOfficers] = useState(false);
+
+
   // Authenticated Supervisor Email Resolution
   const getSupervisorEmail = () => {
     if (activeSupervisor?.email) return activeSupervisor.email.trim().toLowerCase();
@@ -225,6 +230,68 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
       }
     } catch (e) {}
     return '';
+  };
+
+  // Compute dynamic activity status from DB last_active ISO timestamp
+  const computeActivityStatus = (lastActiveIso) => {
+    if (!lastActiveIso) return { status: 'inactive', label: 'No activity recorded' };
+    const now = new Date();
+    const last = new Date(lastActiveIso);
+    const diffMs = now - last;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 15) return { status: 'active', label: 'Active Now (Field App)' };
+    if (diffHours < 1) return { status: 'active', label: `Active ${diffMins} mins ago` };
+    if (diffHours < 6) return { status: 'active', label: `Active ${diffHours} hr${diffHours > 1 ? 's' : ''} ago` };
+    if (diffDays < 1) return { status: 'active', label: 'Active Today' };
+    if (diffDays < 2) return { status: 'low_score', label: 'Active Yesterday' };
+    if (diffDays < 5) return { status: 'low_score', label: `Active ${diffDays} days ago` };
+    return { status: 'inactive', label: `${diffDays} days ago (Unreported)` };
+  };
+
+  // Fetch real officers from DB for the supervisor's field_id
+  const fetchOfficers = async () => {
+    const fieldId = initialFieldId || activeSupervisor?.role_id || 'survey_supervisor_asuse';
+    setIsLoadingOfficers(true);
+    try {
+      const res = await fetch(`${API_BASE}/db/officers?role_id=${encodeURIComponent(fieldId)}`);
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.officers)) {
+        // Map DB officers to the shape the table expects, with dynamic status
+        const mapped = data.officers.map((o, idx) => {
+          const activity = computeActivityStatus(o.last_active);
+          // Use score from DB; compute derived status if not overridden
+          let status = activity.status;
+          if (o.score > 0 && o.score < 70) status = 'low_score';
+          return {
+            id: `DB-${o.id}`,
+            name: o.name,
+            cadre: o.role_name || 'Field Officer',
+            domain: o.department || 'Field Operations Division',
+            email: o.email,
+            phone: o.phone || '',
+            status,
+            score: o.score || 0,
+            modulesCompleted: o.attempts > 0 ? `${Math.min(o.attempts, 5)}/5` : '0/5',
+            weakTopic: o.score >= 70 ? 'None (Passing Benchmark)' : (o.score > 0 ? 'Score below 70% threshold' : 'No assessment taken'),
+            lastActive: activity.label,
+            verificationNote: activity.status === 'active'
+              ? `Verified: Last login ${activity.label}`
+              : activity.status === 'low_score'
+                ? `Auto-Flag: Inactive for ${activity.label}`
+                : `Auto-Flag: No login activity recorded (${activity.label})`,
+            isDeactivated: false,
+          };
+        });
+        setLiveOfficers(mapped);
+      }
+    } catch (e) {
+      console.error('Error fetching live officers:', e);
+    } finally {
+      setIsLoadingOfficers(false);
+    }
   };
 
   const fetchPendingApprovals = async () => {
@@ -244,9 +311,12 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
 
   useEffect(() => {
     fetchPendingApprovals();
+    fetchOfficers();
     const interval = setInterval(fetchPendingApprovals, 12000);
-    return () => clearInterval(interval);
+    const officerInterval = setInterval(fetchOfficers, 30000);
+    return () => { clearInterval(interval); clearInterval(officerInterval); };
   }, []);
+
 
   const handleApproveOfficer = async (officerEmail, officerName, action = 'approve') => {
     setApprovalActionLoading(prev => ({ ...prev, [officerEmail]: true }));
@@ -278,7 +348,15 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
     }
   };
 
-  const currentSquad = squads[selectedFieldId] || squads.survey_supervisor_asuse;
+
+  // Merge live DB officers into the squad — if DB has officers for this field, use them;
+  // otherwise fall back to the prototype INITIAL_SQUADS data
+  const baseSquad = squads[selectedFieldId] || squads.survey_supervisor_asuse;
+  const currentSquad = {
+    ...baseSquad,
+    officers: liveOfficers.length > 0 ? liveOfficers : baseSquad.officers,
+  };
+
 
   // Show auto-fading toast notification
   const triggerToast = (msg) => {
@@ -961,11 +1039,24 @@ export default function SupervisorDashboard({ onLogout, initialFieldId, activeSu
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-[#ea8b21]" />
                     <span>Assigned Squad Cadre Officers ({currentSquad.officers.length})</span>
+                    {liveOfficers.length > 0 ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                        LIVE
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full">
+                        PROTOTYPE
+                      </span>
+                    )}
                   </h3>
                   <p className="text-xs text-slate-800 font-semibold">
-                    Inspect competencies, review automated checks, and manage cadre authorization status.
+                    {liveOfficers.length > 0
+                      ? 'Live data from MoSPI Neon Cloud — status refreshes every 30 seconds.'
+                      : 'Inspect competencies, review automated checks, and manage cadre authorization status.'}
                   </p>
                 </div>
+
 
                 {/* Filter Pills */}
                 <div className="flex items-center gap-1.5 bg-[#faf5ec] p-1 rounded-xl border border-[#ebdcc8] text-xs font-bold self-start sm:self-auto">

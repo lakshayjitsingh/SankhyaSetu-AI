@@ -465,6 +465,22 @@ def get_db_supervisors():
         return jsonify({"success": False, "error": str(e), "supervisors": []}), 500
 
 
+@app.route("/api/db/officers", methods=["GET"])
+def get_db_officers():
+    """Returns active officers from Neon PostgreSQL for the Supervisor dashboard.
+    Optionally filtered by role_id query param (which matches the supervisor's field_id)."""
+    role_id = request.args.get("role_id")
+    try:
+        officers = db.get_officers_by_role_id(role_id=role_id)
+        return jsonify({
+            "success": True,
+            "officers": officers,
+            "count": len(officers)
+        }), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "officers": []}), 500
+
+
 @app.route("/api/db/auth/change-password", methods=["POST"])
 def auth_change_password():
     """Changes password for direct email/password accounts in Neon Cloud PostgreSQL.

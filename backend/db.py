@@ -1302,3 +1302,75 @@ def get_all_supervisors():
         return []
 
 
+
+def get_officers_by_role_id(role_id=None):
+    """Retrieves all active officers from Neon PostgreSQL, optionally filtered by role_id.
+    Returns last_active timestamps and assessment scores so the supervisor can see real activity."""
+    try:
+        with get_db_cursor() as cur:
+            if cur is None:
+                return []
+
+            if role_id:
+                cur.execute("""
+                    SELECT
+                        o.id, o.email, o.name, o.role_id, o.role_name, o.department,
+                        o.phone, o.status, o.last_active, o.created_at, o.is_active,
+                        COALESCE(a.latest_score, 0) AS score,
+                        COALESCE(a.attempts, 0) AS attempts
+                    FROM officers o
+                    LEFT JOIN (
+                        SELECT
+                            officer_email,
+                            MAX(score_achieved) AS latest_score,
+                            COUNT(*) AS attempts
+                        FROM assessment_attempts
+                        GROUP BY officer_email
+                    ) a ON a.officer_email = o.email
+                    WHERE o.role_id = %s
+                      AND o.status = 'active'
+                    ORDER BY o.last_active DESC NULLS LAST;
+                """, (role_id,))
+            else:
+                cur.execute("""
+                    SELECT
+                        o.id, o.email, o.name, o.role_id, o.role_name, o.department,
+                        o.phone, o.status, o.last_active, o.created_at, o.is_active,
+                        COALESCE(a.latest_score, 0) AS score,
+                        COALESCE(a.attempts, 0) AS attempts
+                    FROM officers o
+                    LEFT JOIN (
+                        SELECT
+                            officer_email,
+                            MAX(score_achieved) AS latest_score,
+                            COUNT(*) AS attempts
+                        FROM assessment_attempts
+                        GROUP BY officer_email
+                    ) a ON a.officer_email = o.email
+                    WHERE o.status = 'active'
+                    ORDER BY o.last_active DESC NULLS LAST;
+                """)
+
+            rows = cur.fetchall()
+            officers = []
+            for row in rows:
+                last_active_ts = row[8]
+                officers.append({
+                    "id": str(row[0]),
+                    "email": row[1],
+                    "name": row[2],
+                    "role_id": row[3],
+                    "role_name": row[4] or "Field Officer",
+                    "department": row[5] or "Field Operations Division",
+                    "phone": row[6] or "",
+                    "db_status": row[7] or "active",
+                    "last_active": last_active_ts.isoformat() if last_active_ts else None,
+                    "created_at": row[9].isoformat() if row[9] else None,
+                    "is_active": row[10] if row[10] is not None else True,
+                    "score": int(row[11]) if row[11] else 0,
+                    "attempts": int(row[12]) if row[12] else 0,
+                })
+            return officers
+    except Exception as e:
+        logger.error(f"Error fetching officers by role_id={role_id}: {e}")
+        return []
